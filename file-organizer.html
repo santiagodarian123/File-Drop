@@ -1,0 +1,4127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FileDrop</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- CDN Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+/* ===== CSS RESET & VARIABLES ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --color-bg: #F4F2EF;
+  --paper: #ffffff;
+  --ink: #111827;
+  --rule: #e5e7eb;
+  --blue: #5B72B0;
+  --blue-hover: #3D5490;
+  --blue-light: #E8ECF5;
+  --strip: #A8B4D4;
+  --title-deep: #151F45;
+  --color-heading: #151F45;
+  --color-card-shadow: rgba(91, 114, 176, 0.08);
+  --color-placeholder: #A8B4D4;
+  --color-section-row-bg: #F0F2F8;
+  --shadow: 0 2px 8px var(--color-card-shadow);
+
+  /* Aliases used throughout */
+  --bg-primary: #F4F2EF;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #F0F2F8;
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-muted: #A8B4D4;
+  --border-color: #e5e7eb;
+  --shadow-sm: 0 2px 8px rgba(91,114,176,0.08);
+  --shadow-md: 0 4px 16px rgba(91,114,176,0.12);
+  --shadow-lg: 0 10px 30px rgba(91,114,176,0.18);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --accent-blue: #5B72B0;
+  --accent-blue-light: #E8ECF5;
+  --accent-blue-hover: #3D5490;
+
+  /* Category accent colors */
+  --cat-0-color: #5B72B0;
+  --cat-0-bg: #E8ECF5;
+  --cat-1-color: #059669;
+  --cat-1-bg: #d1fae5;
+  --cat-2-color: #d97706;
+  --cat-2-bg: #fef3c7;
+  --cat-3-color: #7c3aed;
+  --cat-3-bg: #ede9fe;
+
+  --transition: all 0.2s ease;
+  --font: 'Inter', sans-serif;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0d1220;
+  --bg-secondary: #151F45;
+  --bg-tertiary: #1e2d5a;
+  --text-primary: #e8edf8;
+  --text-secondary: #a8b4d4;
+  --text-muted: #5a6a8a;
+  --border-color: #2a3a6a;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.35);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.45);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.55);
+  --accent-blue: #8098d0;
+  --accent-blue-light: #1e2d5a;
+  --accent-blue-hover: #9aaee0;
+  --cat-0-bg: #1e2d5a;
+  --cat-1-bg: #1a3d30;
+  --cat-2-bg: #3d2a00;
+  --cat-3-bg: #2d1b5e;
+}
+
+/* ===== GLOBAL ===== */
+body {
+  font-family: var(--font);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* ===== HEADER ===== */
+.app-header {
+  background: #151F45;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(21,31,69,0.3);
+}
+
+.app-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 18px;
+  color: #ffffff;
+  white-space: nowrap;
+}
+.app-logo span { font-size: 24px; }
+
+.search-wrapper {
+  flex: 1;
+  max-width: 480px;
+  position: relative;
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--strip);
+  font-size: 15px;
+  pointer-events: none;
+}
+#searchInput {
+  width: 100%;
+  padding: 9px 12px 9px 36px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid #A8B4D4;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: var(--font);
+  color: #ffffff;
+  transition: var(--transition);
+  outline: none;
+}
+#searchInput:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(91,114,176,0.25);
+  background: rgba(255,255,255,0.15);
+}
+#searchInput::placeholder { color: rgba(168,180,212,0.7); }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: var(--transition);
+  white-space: nowrap;
+  outline: none;
+}
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+  border-radius: 8px;
+}
+.btn-primary:hover { background: var(--blue-hover); border-color: var(--blue-hover); }
+
+.btn-secondary {
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.2);
+  border-radius: 8px;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.2); }
+
+/* Secondary buttons INSIDE main content (not in header) */
+.main-content .btn-secondary,
+.modal .btn-secondary,
+.dialog .btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+.main-content .btn-secondary:hover,
+.modal .btn-secondary:hover,
+.dialog .btn-secondary:hover {
+  background: var(--border-color);
+}
+
+.btn-icon {
+  padding: 8px;
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  font-size: 16px;
+}
+.btn-icon:hover { background: rgba(255,255,255,0.2); }
+
+/* ===== GLOBAL DROP ZONE ===== */
+.global-drop-zone {
+  margin: 20px 24px;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  background: var(--bg-secondary);
+  position: relative;
+}
+.global-drop-zone:hover, .global-drop-zone.drag-over {
+  border-color: var(--blue);
+  background: var(--blue-light);
+  box-shadow: 0 0 0 4px rgba(91,114,176,0.12);
+}
+[data-theme="dark"] .global-drop-zone:hover,
+[data-theme="dark"] .global-drop-zone.drag-over {
+  background: rgba(91,114,176,0.12);
+}
+.global-drop-zone .drop-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+}
+.global-drop-zone .drop-icon { font-size: 28px; }
+.global-drop-zone .drop-text { font-size: 14px; }
+.global-drop-zone .drop-text strong { display: block; color: var(--text-secondary); font-size: 15px; margin-bottom: 2px; }
+#globalFileInput { display: none; }
+
+/* ===== MAIN LAYOUT ===== */
+.main-content {
+  padding: 0 24px 24px;
+}
+
+.categories-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.categories-toolbar h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-heading);
+  margin-right: auto;
+}
+[data-theme="dark"] .categories-toolbar h2 { color: var(--text-primary); }
+
+.btn-add-category {
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition);
+}
+.btn-add-category:hover { background: var(--blue-hover); }
+.btn-add-category:active { transform: scale(0.97); }
+
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+/* ===== CATEGORY ZONE ===== */
+.category-zone {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: var(--transition);
+  overflow: hidden;
+}
+
+.category-zone.drag-over {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(91,114,176,0.2), var(--shadow-md);
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 11px;
+  background: var(--color-section-row-bg);
+  border-bottom: 1px solid var(--border-color);
+}
+[data-theme="dark"] .category-header { background: var(--bg-tertiary); }
+
+.category-color-bar {
+  width: 4px;
+  height: 22px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.category-name-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.category-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-heading);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+  transition: var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-theme="dark"] .category-name { color: var(--text-primary); }
+.category-name:hover { background: rgba(91,114,176,0.1); }
+
+.category-name-input {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--blue);
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+  max-width: 160px;
+}
+
+.category-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.category-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.cat-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: var(--transition);
+  line-height: 1;
+  font-family: var(--font);
+}
+.cat-btn:hover { background: rgba(91,114,176,0.12); color: var(--text-primary); }
+.cat-btn.danger:hover { background: #fef2f2; color: #ef4444; }
+[data-theme="dark"] .cat-btn.danger:hover { background: #2d1515; color: #f87171; }
+
+/* Collapse toggle */
+.cat-btn-collapse {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cat-btn-collapse:hover { background: rgba(91,114,176,0.12); color: var(--text-primary); }
+.cat-btn-collapse .arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+.cat-btn-collapse.collapsed .arrow { transform: rotate(-90deg); }
+
+/* ===== FILE LIST BODY ===== */
+.category-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.category-body.collapsed { display: none !important; }
+
+.category-body:not(.collapsed) { padding-bottom: 8px; }
+
+.file-list {
+  padding: 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  padding: 24px;
+  text-align: center;
+}
+.empty-state .empty-icon { font-size: 32px; opacity: 0.4; }
+.empty-state p { font-size: 13px; }
+.empty-state p strong { display: block; margin-bottom: 3px; font-size: 14px; color: var(--text-secondary); }
+
+/* ===== SUBCATEGORY ===== */
+.subcategory-section {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  margin: 4px 0;
+}
+
+.subcategory-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: var(--color-section-row-bg);
+  border-left: 3px solid var(--blue);
+  cursor: default;
+  user-select: none;
+  min-height: 34px;
+}
+[data-theme="dark"] .subcategory-header { background: var(--bg-tertiary); }
+
+.subcategory-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 1px 3px;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  transition: var(--transition);
+  line-height: 1;
+}
+.subcategory-toggle:hover { background: rgba(91,114,176,0.12); color: var(--text-primary); }
+.subcategory-toggle .arr {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+.subcategory-toggle.collapsed .arr { transform: rotate(-90deg); }
+
+.subcategory-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 1px 4px;
+  transition: var(--transition);
+}
+.subcategory-name:hover { background: rgba(91,114,176,0.1); color: var(--text-primary); }
+
+.subcategory-name-input {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--blue);
+  border-radius: 3px;
+  padding: 1px 5px;
+  outline: none;
+  min-width: 0;
+}
+
+.subcategory-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  padding: 1px 5px;
+  border-radius: 8px;
+}
+
+.subcategory-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: var(--transition);
+  line-height: 1;
+  opacity: 0;
+}
+.subcategory-header:hover .subcategory-del { opacity: 1; }
+.subcategory-del:hover { background: #fef2f2; color: #ef4444; }
+[data-theme="dark"] .subcategory-del:hover { background: #2d1515; color: #f87171; }
+
+/* Priority pill */
+.sub-priority {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+  letter-spacing: 0.2px;
+}
+.sub-priority:hover { opacity: 0.8; }
+.sub-priority.priority-none    { background: rgba(0,0,0,0.07); color: var(--text-muted); }
+.sub-priority.priority-important { background: #fee2e2; color: #dc2626; }
+.sub-priority.priority-medium   { background: #fef9c3; color: #b45309; }
+.sub-priority.priority-low      { background: #dcfce7; color: #16a34a; }
+
+/* Note button */
+.sub-note-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: var(--transition);
+  line-height: 1;
+  flex-shrink: 0;
+  position: relative;
+}
+.sub-note-btn:hover { background: rgba(91,114,176,0.12); color: var(--blue); }
+.sub-note-btn.has-note { color: var(--blue); }
+.sub-note-btn.has-note::after {
+  content: '';
+  position: absolute;
+  top: 1px; right: 2px;
+  width: 5px; height: 5px;
+  background: var(--blue);
+  border-radius: 50%;
+}
+
+/* Note modal */
+.note-modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2000;
+}
+.note-modal-bg.hidden { display: none; }
+.note-modal {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 420px;
+  max-width: 95vw;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.note-modal h3 { font-size: 15px; font-weight: 700; color: var(--color-heading); }
+.note-modal textarea {
+  width: 100%;
+  min-height: 120px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.note-modal textarea:focus { border-color: var(--blue); }
+.note-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.note-modal-btns button { padding: 7px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; border: none; font-family: var(--font); }
+.note-modal-cancel { background: var(--bg-tertiary); color: var(--text-secondary); }
+.note-modal-cancel:hover { background: var(--border-color); }
+.note-modal-save { background: var(--blue); color: #fff; }
+.note-modal-save:hover { background: var(--blue-hover); }
+
+.subcategory-drop-zone {
+  padding: 4px 0 4px 0;
+  min-height: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: var(--transition);
+}
+.subcategory-drop-zone.drag-over {
+  background: var(--blue-light);
+  border-radius: var(--radius-sm);
+}
+.subcategory-drop-zone > .file-card {
+  margin-left: 8px;
+  margin-right: 4px;
+}
+
+/* Add Sub button */
+.btn-add-sub {
+  background: var(--blue-light);
+  border: 1.5px solid var(--blue);
+  border-radius: 6px;
+  color: var(--blue);
+  font-size: 11px;
+  font-family: var(--font);
+  font-weight: 700;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.2px;
+}
+.btn-add-sub:hover { background: var(--blue); color: white; border-color: var(--blue); }
+.btn-add-sub:active { transform: scale(0.97); }
+
+/* Sub empty state */
+.sub-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.7;
+}
+.sub-empty-state span:first-child { font-size: 22px; font-style: normal; opacity: 0.5; }
+
+/* ===== FILE CARD ===== */
+.file-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 9px 11px;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  position: relative;
+  user-select: none;
+}
+.file-card:hover {
+  border-color: var(--blue);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.file-card.dragging {
+  opacity: 0.4;
+  transform: scale(0.97);
+}
+.file-card-del {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.file-card:hover .file-card-del { opacity: 1; }
+.file-card-del:hover { color: #ef4444; background: #fef2f2; }
+
+.file-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+.file-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.file-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.file-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.tag-chip {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 500;
+  background: var(--blue-light);
+  color: var(--blue-hover);
+}
+[data-theme="dark"] .tag-chip {
+  background: rgba(91,114,176,0.25);
+  color: #a8b4d4;
+}
+
+/* ===== CONTEXT MENU ===== */
+.context-menu {
+  position: fixed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  min-width: 190px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: var(--transition);
+  position: relative;
+}
+.context-menu-item:hover { background: var(--bg-tertiary); }
+.context-menu-item.danger { color: #ef4444; }
+.context-menu-item.danger:hover { background: #fef2f2; }
+[data-theme="dark"] .context-menu-item.danger:hover { background: #2d1515; }
+.context-menu-separator {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+.context-menu-item .submenu-arrow { margin-left: auto; opacity: 0.5; font-size: 10px; }
+
+.submenu {
+  position: absolute;
+  left: 100%;
+  top: -6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 6px 0;
+  display: none;
+}
+.context-menu-item:hover .submenu { display: block; }
+.submenu-subheader {
+  padding: 4px 14px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ===== MODAL ===== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+.modal-backdrop.hidden { display: none; }
+
+.modal {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  border: 1px solid var(--border-color);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+.modal-title {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.modal-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-page-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: 80px;
+  text-align: center;
+}
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: var(--transition);
+  line-height: 1;
+}
+.btn-close:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+
+.modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+/* PDF viewer */
+.pdf-viewer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+#pdfCanvas {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+/* Excel viewer */
+.excel-viewer .sheet-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.sheet-tab {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: var(--transition);
+}
+.sheet-tab.active {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+}
+.table-wrap { overflow: auto; max-height: 60vh; border-radius: var(--radius-sm); border: 1px solid var(--border-color); }
+.excel-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 100%;
+}
+.excel-table th, .excel-table td {
+  border: 1px solid var(--border-color);
+  padding: 5px 10px;
+  white-space: nowrap;
+  color: var(--text-primary);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.excel-table th {
+  background: var(--bg-tertiary);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.excel-table tr:nth-child(even) td { background: var(--color-section-row-bg); }
+
+/* Word viewer */
+.word-viewer {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  max-width: 720px;
+  margin: 0 auto;
+}
+.word-viewer h1, .word-viewer h2, .word-viewer h3 { margin: 1em 0 0.5em; }
+.word-viewer p { margin-bottom: 0.8em; }
+.word-viewer table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+.word-viewer td, .word-viewer th { border: 1px solid var(--border-color); padding: 6px 10px; }
+
+/* Image viewer */
+.image-viewer {
+  display: flex;
+  justify-content: center;
+}
+.image-viewer img {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+/* Text viewer */
+.text-viewer pre {
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  overflow: auto;
+  max-height: 65vh;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-primary);
+}
+
+/* Other/info viewer */
+.file-info-viewer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  text-align: center;
+}
+.file-info-viewer .big-icon { font-size: 72px; }
+.file-info-viewer .info-table { font-size: 14px; text-align: left; }
+.file-info-viewer .info-table td { padding: 5px 12px; color: var(--text-secondary); }
+.file-info-viewer .info-table td:first-child { font-weight: 600; color: var(--text-primary); }
+
+/* ===== DIALOGS ===== */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.dialog-backdrop.hidden { display: none; }
+
+.dialog {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+  max-width: 400px;
+  width: 100%;
+  border: 1px solid var(--border-color);
+}
+.dialog h3 { font-size: 16px; margin-bottom: 16px; color: var(--color-heading); }
+[data-theme="dark"] .dialog h3 { color: var(--text-primary); }
+.dialog input, .dialog textarea {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: var(--font);
+  color: var(--text-primary);
+  outline: none;
+  transition: var(--transition);
+  margin-bottom: 14px;
+}
+.dialog input:focus, .dialog textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(91,114,176,0.12);
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.dialog-actions .btn-primary {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+}
+.dialog-actions .btn-primary:hover { background: var(--blue-hover); border-color: var(--blue-hover); }
+.dialog-actions .btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+.dialog-actions .btn-secondary:hover { background: var(--border-color); }
+.dialog label { font-size: 13px; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 6px; }
+
+/* ===== TOAST ===== */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  background: #111827;
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideInToast 0.25s ease;
+  pointer-events: auto;
+  max-width: 320px;
+}
+.toast.success { background: #15803d; color: white; }
+.toast.error { background: #dc2626; color: white; }
+.toast.info { background: var(--blue); color: white; }
+.toast.warning { background: #d97706; color: white; }
+@keyframes slideInToast {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeOutToast {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* ===== PROGRESS BAR ===== */
+.progress-bar {
+  height: 3px;
+  background: var(--blue);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  transition: width 0.3s ease;
+  border-radius: 0 2px 2px 0;
+}
+
+/* ===== LOADING SPINNER ===== */
+.loading-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--text-muted);
+  gap: 12px;
+}
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== MISC ===== */
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 640px) {
+  .categories-grid { grid-template-columns: 1fr; }
+  .app-header { padding: 0 12px; height: auto; flex-wrap: wrap; padding: 10px 12px; }
+  .main-content { padding: 0 12px 20px; }
+  .global-drop-zone { margin: 12px; }
+  .search-wrapper { max-width: none; }
+  .header-credit { display: none; }
+  .right-panels { display: none; }
+}
+
+/* ===== 3-COLUMN LAYOUT ===== */
+.app-layout {
+  display: flex;
+  align-items: flex-start;
+  min-height: calc(100vh - 64px);
+}
+.main-content {
+  flex: 1;
+  min-width: 0;
+  padding: 0 24px 24px;
+}
+.right-panels {
+  width: 252px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 16px 20px 0;
+  position: sticky;
+  top: 64px;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+}
+
+/* ===== RIGHT PANELS (SIDEBAR) ===== */
+.panel {
+  background: #151F45;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(21,31,69,0.2);
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.panel-title {
+  flex: 1;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.panel-toggle {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.72rem;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s ease;
+  line-height: 1;
+}
+.panel-toggle.collapsed { transform: rotate(-90deg); }
+.panel-body {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.panel-body.hidden { display: none; }
+
+/* ===== SAVED LINKS ===== */
+.link-input-row { display: flex; gap: 6px; }
+.link-input-row input {
+  flex: 1;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 6px 8px;
+  outline: none;
+  font-family: var(--font);
+  min-width: 0;
+}
+.link-input-row input::placeholder { color: rgba(255,255,255,0.45); font-style: italic; }
+.link-input-row input:focus { border-color: var(--strip); }
+.link-add-btn {
+  background: #fff;
+  border: none;
+  border-radius: 6px;
+  color: #151F45;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+  font-family: var(--font);
+}
+.link-add-btn:hover { opacity: 0.85; }
+.link-list { display: flex; flex-direction: column; gap: 5px; max-height: 200px; overflow-y: auto; }
+.link-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 7px;
+  padding: 6px 9px;
+}
+.link-item a {
+  flex: 1;
+  font-size: 0.73rem;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.link-item a:hover { text-decoration: underline; }
+.link-del {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.35);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.link-del:hover { color: #fff; }
+
+/* Link sections */
+.link-section-row { display: flex; gap: 6px; margin-top: 5px; }
+.link-section-select {
+  flex: 1;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 5px 8px;
+  outline: none;
+  font-family: var(--font);
+  cursor: pointer;
+}
+.link-section-select option { background: #151F45; color: #fff; }
+.link-new-section-row { display: flex; gap: 6px; margin-top: 5px; }
+.link-new-section-row input {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  border: 1px dashed rgba(255,255,255,0.2);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.73rem;
+  padding: 5px 8px;
+  outline: none;
+  font-family: var(--font);
+  min-width: 0;
+}
+.link-new-section-row input::placeholder { color: rgba(255,255,255,0.4); font-style: italic; }
+.link-new-section-row input:focus { border-color: var(--strip); }
+.link-section-group { margin-top: 8px; }
+.link-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 0 3px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  margin-bottom: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.link-section-heading-arrow {
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.6);
+  transition: transform 0.15s;
+  display: inline-block;
+}
+.link-section-heading-arrow.collapsed { transform: rotate(-90deg); }
+.link-section-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  flex: 1;
+}
+.link-section-del {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.25);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color 0.15s;
+}
+.link-section-del:hover { color: rgba(255,100,100,0.9); }
+.link-section-items { display: flex; flex-direction: column; gap: 4px; }
+.link-section-items.collapsed { display: none; }
+.link-list { display: flex; flex-direction: column; gap: 5px; max-height: 340px; overflow-y: auto; margin-top: 4px; }
+.panel-empty {
+  font-size: 0.73rem;
+  color: rgba(255,255,255,0.4);
+  font-style: italic;
+  text-align: center;
+  padding: 10px 0;
+}
+  font-size: 0.73rem;
+  color: rgba(255,255,255,0.4);
+  font-style: italic;
+  text-align: center;
+  padding: 10px 0;
+}
+
+/* ===== EMAILS PANEL ===== */
+.email-add-btn {
+  background: var(--blue);
+  border: none;
+  border-radius: 7px;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 0;
+  cursor: pointer;
+  width: 100%;
+  font-family: var(--font);
+  transition: background 0.15s;
+}
+.email-add-btn:hover { background: var(--blue-hover); }
+
+/* Email card action row */
+.email-card-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 7px;
+  align-items: center;
+}
+.email-action-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s, color 0.15s;
+  font-family: var(--font);
+}
+.email-action-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+.email-action-btn.del:hover { background: rgba(239,68,68,0.25); color: #fca5a5; border-color: rgba(239,68,68,0.4); }
+
+/* Email drag-drop zone */
+.email-drop-zone {
+  border: 1.5px dashed rgba(255,255,255,0.3);
+  border-radius: 8px;
+  padding: 12px 8px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  transition: border-color 0.15s, background 0.15s;
+  cursor: default;
+}
+.email-drop-zone.drag-over {
+  border-color: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.08);
+}
+.email-drop-icon { font-size: 1.4rem; opacity: 0.6; }
+.email-drop-text {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.5);
+  text-align: center;
+  line-height: 1.4;
+}
+.email-drop-text small { font-size: 0.65rem; opacity: 0.7; }
+ display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; }
+.email-card {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 9px 11px;
+  position: relative;
+  cursor: default;
+  transition: background 0.15s;
+}
+.email-card:hover { background: rgba(255,255,255,0.16); }
+.email-card.overdue { border-left: 3px solid #f97316; }
+.email-subject { font-size: 0.75rem; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+.email-meta { font-size: 0.67rem; color: rgba(168,180,212,0.8); margin-bottom: 5px; }
+.email-status {
+  display: inline-block;
+  font-size: 0.63rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s;
+}
+.email-status:hover { opacity: 0.75; }
+.email-status.pending { background: #fef3c7; color: #92400e; }
+.email-status.actioned { background: #d1fae5; color: #065f46; }
+.email-status.forinfo { background: #E8ECF5; color: #3D5490; }
+.email-overdue-badge { font-size: 0.63rem; font-weight: 700; color: #fdba74; display: block; margin-top: 3px; }
+
+/* Email preview modal */
+.email-preview-bg {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 800;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(3px);
+}
+.email-preview-bg.open { display: flex; }
+.email-preview-modal {
+  background: #fff;
+  border-radius: 14px;
+  width: 540px;
+  max-width: 95vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+}
+.email-preview-header {
+  background: var(--title-deep);
+  color: #fff;
+  padding: 18px 22px 14px;
+  border-radius: 14px 14px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+.email-preview-subject {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  padding-right: 32px;
+  line-height: 1.3;
+}
+.email-preview-header-meta { font-size: 0.72rem; color: rgba(168,180,212,0.9); display: flex; flex-direction: column; gap: 2px; }
+.email-preview-close {
+  position: absolute; top: 14px; right: 16px;
+  background: none; border: none; color: rgba(255,255,255,0.6);
+  font-size: 1.1rem; cursor: pointer; padding: 2px 6px; border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.email-preview-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
+.email-preview-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+.email-preview-section-label {
+  font-size: 0.65rem; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;
+}
+.email-preview-content {
+  font-size: 0.82rem; color: #374151; line-height: 1.6;
+  background: #f9fafb; border-radius: 8px; padding: 12px 14px;
+  white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow-y: auto;
+}
+.email-preview-note { font-size: 0.82rem; color: #374151; font-style: italic; }
+.email-preview-status { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 3px 12px; border-radius: 20px; }
+.email-preview-status.pending  { background: #fef3c7; color: #92400e; }
+.email-preview-status.actioned { background: #d1fae5; color: #065f46; }
+.email-preview-status.forinfo  { background: #E8ECF5; color: #3D5490; }
+.email-preview-footer {
+  padding: 12px 22px 18px;
+  display: flex; gap: 8px; justify-content: flex-end;
+  border-top: 1px solid #f3f4f6;
+}
+/* ===== EMAIL MODAL ===== */
+.email-modal-bg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 700;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(3px);
+}
+.email-modal-bg.open { display: flex; }
+.email-modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px 26px 20px;
+  width: 480px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.email-modal h3 { font-size: 1.05rem; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 8px; margin-bottom: 0; }
+.email-modal-section-label { font-size: 0.66rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; }
+.email-modal hr { border: none; border-top: 1px solid #f3f4f6; margin: 2px 0; }
+.email-modal label { font-size: 0.78rem; font-weight: 600; color: #374151; display: block; margin-bottom: 4px; }
+.email-modal input, .email-modal select, .email-modal textarea {
+  width: 100%;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #111827;
+  font-size: 0.87rem;
+  padding: 8px 11px;
+  outline: none;
+  font-family: var(--font);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+.email-modal textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
+.email-modal input:focus, .email-modal select:focus, .email-modal textarea:focus {
+  border-color: #5B72B0;
+  box-shadow: 0 0 0 3px rgba(91,114,176,0.15);
+  background: #fff;
+}
+.email-modal input::placeholder, .email-modal textarea::placeholder { color: #9ca3af; font-style: italic; }
+.email-modal-field { display: flex; flex-direction: column; gap: 0; }
+.email-modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+.email-modal-ok {
+  background: #5B72B0; color: #fff; border: none; border-radius: 7px;
+  font-size: 0.84rem; font-weight: 600; padding: 9px 22px; cursor: pointer;
+  transition: background 0.15s; font-family: var(--font);
+}
+.email-modal-ok:hover { background: #3D5490; }
+.email-modal-cancel {
+  background: #f3f4f6; color: #6b7280; border: none; border-radius: 7px;
+  font-size: 0.84rem; font-weight: 600; padding: 9px 18px; cursor: pointer;
+  font-family: var(--font); transition: background 0.15s;
+}
+.email-modal-cancel:hover { background: #e5e7eb; }
+
+/* ===== HEADER CREDIT ===== */
+.header-credit {
+  text-align: right;
+  line-height: 1.55;
+  flex-shrink: 0;
+  border-left: 1px solid rgba(255,255,255,0.12);
+  padding-left: 14px;
+  margin-left: 4px;
+}
+.header-credit-name {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  white-space: nowrap;
+}
+.header-credit-link {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--strip);
+  text-decoration: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.header-credit-link:hover { text-decoration: underline; color: #ffffff; }
+.header-credit-copy {
+  font-size: 0.6rem;
+  color: rgba(168,180,212,0.6);
+  white-space: nowrap;
+  margin-top: 1px;
+}
+</style>
+</head>
+<body>
+
+<!-- Progress bar -->
+<div id="progressBar" class="progress-bar" style="width:0;display:none;"></div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ===== HEADER ===== -->
+<header class="app-header">
+  <div class="app-logo">
+    <span>🗂️</span>
+    FileDrop
+  </div>
+
+  <div class="search-wrapper">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search files by name or tag…" autocomplete="off">
+  </div>
+
+  <div class="header-actions">
+    <button class="btn btn-secondary" id="restoreBtn" title="Restore from JSON backup">
+      📂 Restore
+    </button>
+    <button class="btn btn-secondary" id="saveJsonBtn" title="Save JSON backup (Ctrl+S)">
+      💾 Save JSON
+    </button>
+    <button class="btn btn-secondary" id="saveHtmlBtn" title="Save self-contained HTML">
+      🌐 Save HTML
+    </button>
+    <button class="btn btn-primary" id="importFilesBtn" title="Import Files">
+      ➕ Add Files
+    </button>
+    <button class="btn-icon btn" id="themeToggleBtn" title="Toggle dark mode">🌙</button>
+  </div>
+  <input type="file" id="restoreFileInput" accept=".json" style="display:none">
+
+  <div class="header-credit">
+    <div class="header-credit-name">Developer: Darian Pulgarin</div>
+    <a href="https://www.linkedin.com/in/santiagodarian" target="_blank" rel="noopener noreferrer" class="header-credit-link">linkedin.com/in/santiagodarian</a>
+    <div class="header-credit-copy">© 2026 Darian Pulgarin. All rights reserved.</div>
+  </div>
+  <input type="file" id="headerFileInput" multiple style="display:none;">
+</header>
+
+<!-- ===== GLOBAL DROP ZONE ===== -->
+<div class="global-drop-zone" id="globalDropZone">
+  <div class="drop-inner">
+    <div class="drop-icon">📂</div>
+    <div class="drop-text">
+      <strong>Drop files here</strong>
+      Drag &amp; drop any file, or click to browse — files go to the first category by default
+    </div>
+  </div>
+</div>
+<input type="file" id="globalFileInput" multiple>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="app-layout">
+<main class="main-content">
+  <div class="categories-toolbar">
+    <h2>My Categories</h2>
+    <button class="btn-add-category" id="addCategoryBtn">＋ Add Category</button>
+  </div>
+  <div class="categories-grid" id="categoriesGrid">
+    <!-- Categories rendered by JS -->
+  </div>
+</main>
+
+<!-- ===== RIGHT PANELS ===== -->
+<aside class="right-panels">
+  <!-- Saved Links Panel -->
+  <div class="panel" id="linksPanel">
+    <div class="panel-header" id="linksPanelHeader">
+      <span class="panel-title">🔗 Saved Links</span>
+      <button class="panel-toggle" id="linksPanelToggle">▼</button>
+    </div>
+    <div class="panel-body" id="linksPanelBody">
+      <div class="link-input-row">
+        <input type="text" id="linkInput" placeholder="Paste a link...">
+        <button class="link-add-btn" id="linkAddBtn">+</button>
+      </div>
+      <div class="link-section-row">
+        <select id="linkSectionSelect" class="link-section-select"></select>
+      </div>
+      <div class="link-new-section-row">
+        <input type="text" id="newSectionInput" placeholder="+ New section name...">
+        <button class="link-add-btn" id="newSectionBtn">▶</button>
+      </div>
+      <div class="link-list" id="linkList"></div>
+    </div>
+  </div>
+  <!-- Emails Panel -->
+  <div class="panel" id="emailsPanel">
+    <div class="panel-header" id="emailsPanelHeader">
+      <span class="panel-title">📧 Emails</span>
+      <button class="panel-toggle" id="emailsPanelToggle">▼</button>
+    </div>
+    <div class="panel-body" id="emailsPanelBody">
+      <div class="email-drop-zone" id="emailDropZone">
+        <span class="email-drop-icon">📧</span>
+        <span class="email-drop-text">Drop email here<br><small>or</small></span>
+        <button class="email-add-btn" id="addEmailBtn">＋ Add Email</button>
+      </div>
+      <div class="email-list" id="emailList"></div>
+    </div>
+  </div>
+</aside>
+</div><!-- end app-layout -->
+
+<!-- ===== NOTE MODAL ===== -->
+<div class="note-modal-bg hidden" id="noteModalBg">
+  <div class="note-modal">
+    <h3>📝 Subcategory Note</h3>
+    <textarea id="noteModalText" placeholder="Write a note for this subcategory…"></textarea>
+    <div class="note-modal-btns">
+      <button class="note-modal-cancel" id="noteModalCancel">Cancel</button>
+      <button class="note-modal-save" id="noteModalSave">Save Note</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EMAIL PREVIEW MODAL ===== -->
+<div class="email-preview-bg" id="emailPreviewBg">
+  <div class="email-preview-modal">
+    <div class="email-preview-header">
+      <div class="email-preview-subject" id="previewSubject"></div>
+      <div class="email-preview-header-meta">
+        <span id="previewSender"></span>
+        <span id="previewDate"></span>
+      </div>
+      <button class="email-preview-close" id="emailPreviewClose">✕</button>
+    </div>
+    <div class="email-preview-body">
+      <div id="previewBodyWrap" style="display:none">
+        <div class="email-preview-section-label">Email Body</div>
+        <div class="email-preview-content" id="previewBody"></div>
+      </div>
+      <div id="previewNoteWrap" style="display:none">
+        <div class="email-preview-section-label">Note</div>
+        <div class="email-preview-note" id="previewNote"></div>
+      </div>
+      <div>
+        <div class="email-preview-section-label">Status</div>
+        <span class="email-preview-status" id="previewStatus"></span>
+      </div>
+    </div>
+    <div class="email-preview-footer">
+      <button class="email-modal-cancel" id="emailPreviewCloseBtn" style="padding:7px 18px;font-size:13px;font-weight:600;border-radius:6px;border:none;background:#f3f4f6;color:#374151;cursor:pointer;">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EMAIL MODAL ===== -->
+<div class="email-modal-bg" id="emailModalBg">
+  <div class="email-modal">
+    <h3>📧 Email Dropped</h3>
+    <div class="email-modal-section-label">EMAIL DETAILS — FOR QUICK OUTLOOK SEARCH</div>
+    <hr>
+    <div class="email-modal-field"><label>Subject line</label><input type="text" id="emailSubject" placeholder="e.g. RE: Q3 Budget Review"></div>
+    <div class="email-modal-field"><label>From (sender)</label><input type="text" id="emailSender" placeholder="e.g. Stefan Pulgarin"></div>
+    <div class="email-modal-field"><label>Date received</label><input type="date" id="emailDate"></div>
+    <div class="email-modal-field"><label>Email body (paste from Outlook)</label><textarea id="emailBody" placeholder="Paste the email content here..."></textarea></div>
+    <hr>
+    <div class="email-modal-section-label">YOUR NOTES</div>
+    <div class="email-modal-field"><label>Note — what is this about?</label><input type="text" id="emailNote" placeholder="e.g. Budget approval follow-up"></div>
+    <div class="email-modal-field"><label>Status</label>
+      <select id="emailStatus">
+        <option value="pending">⏳ Pending</option>
+        <option value="actioned">✅ Actioned</option>
+        <option value="forinfo">ℹ️ For Info</option>
+      </select>
+    </div>
+    <div class="email-modal-btns">
+      <button class="email-modal-cancel" id="emailModalCancel">Cancel</button>
+      <button class="email-modal-ok" id="emailModalSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FILE VIEWER MODAL ===== -->
+<div class="modal-backdrop hidden" id="viewerModal">
+  <div class="modal" id="viewerModalBox" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <span id="viewerIcon" style="font-size:20px;"></span>
+      <span class="modal-title" id="viewerTitle"></span>
+      <div class="modal-nav" id="pdfNav" style="display:none;">
+        <button class="btn btn-secondary" id="pdfPrevBtn" style="padding:5px 10px;">◀</button>
+        <span class="modal-page-info" id="pdfPageInfo">1 / 1</span>
+        <button class="btn btn-secondary" id="pdfNextBtn" style="padding:5px 10px;">▶</button>
+      </div>
+      <button class="btn btn-secondary" id="downloadFromViewer" style="margin-left:8px;padding:6px 10px;font-size:12px;">⬇ Download</button>
+      <button class="btn-close" id="closeViewerBtn" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" id="viewerBody">
+      <!-- Content rendered here -->
+    </div>
+  </div>
+</div>
+
+<!-- ===== RENAME DIALOG ===== -->
+<div class="dialog-backdrop hidden" id="renameDialog">
+  <div class="dialog">
+    <h3>Rename File</h3>
+    <label>File name</label>
+    <input type="text" id="renameInput" placeholder="Enter new name…">
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" id="renameCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="renameConfirmBtn">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TAG DIALOG ===== -->
+<div class="dialog-backdrop hidden" id="tagDialog">
+  <div class="dialog">
+    <h3>Add / Edit Tags</h3>
+    <label>Tags (comma-separated)</label>
+    <input type="text" id="tagInput" placeholder="e.g. important, draft, 2024…">
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" id="tagCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="tagConfirmBtn">Save Tags</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CONTEXT MENU ===== -->
+<div class="context-menu hidden" id="contextMenu">
+  <div class="context-menu-item" id="ctxRename">✏️ Rename</div>
+  <div class="context-menu-item" id="ctxTags">🏷️ Add / Edit Tags</div>
+  <div class="context-menu-item" id="ctxDuplicate">📋 Duplicate</div>
+  <div class="context-menu-separator"></div>
+  <div class="context-menu-item" id="ctxMove">
+    📁 Move to…
+    <span class="submenu-arrow">▶</span>
+    <div class="submenu" id="ctxMoveSubmenu">
+      <!-- Filled dynamically -->
+    </div>
+  </div>
+  <div class="context-menu-separator"></div>
+  <div class="context-menu-item" id="ctxDownload">⬇️ Download</div>
+  <div class="context-menu-item" id="ctxReplace">🔄 Replace with updated file</div>
+  <div class="context-menu-separator"></div>
+  <div class="context-menu-item danger" id="ctxDelete">🗑️ Delete</div>
+</div>
+
+<script>
+'use strict';
+// ============================================================
+//  FILE ORGANIZER — Full Application Logic
+// ============================================================
+
+// ─── PDF.js worker setup ────────────────────────────────────
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ─── Constants ──────────────────────────────────────────────
+const DB_NAME = 'FileOrganizerDB';
+const DB_VERSION = 3;
+const STORE_FILES = 'files';
+const STORE_CATEGORIES = 'categories';
+
+// Accent color palette — cycles via index % 4
+const CAT_COLORS = [
+  { color: '#5B72B0', bg: '#E8ECF5' },
+  { color: '#059669', bg: '#d1fae5' },
+  { color: '#d97706', bg: '#fef3c7' },
+  { color: '#7c3aed', bg: '#ede9fe' },
+];
+
+const DEFAULT_CATEGORIES = [
+  { id: 'cat-0', name: 'Documents',    colorIndex: 0, order: 0, subcategories: [] },
+  { id: 'cat-1', name: 'Spreadsheets', colorIndex: 1, order: 1, subcategories: [] },
+  { id: 'cat-2', name: 'Reports',      colorIndex: 2, order: 2, subcategories: [] },
+  { id: 'cat-3', name: 'Archive',      colorIndex: 3, order: 3, subcategories: [] },
+];
+
+const FILE_TYPES = {
+  pdf:  { icon: '📋', label: 'PDF',   color: '#ef4444' },
+  xlsx: { icon: '📊', label: 'Excel', color: '#16a34a' },
+  xls:  { icon: '📊', label: 'Excel', color: '#16a34a' },
+  docx: { icon: '📄', label: 'Word',  color: '#5B72B0' },
+  doc:  { icon: '📄', label: 'Word',  color: '#5B72B0' },
+  png:  { icon: '🖼️', label: 'Image', color: '#8b5cf6' },
+  jpg:  { icon: '🖼️', label: 'Image', color: '#8b5cf6' },
+  jpeg: { icon: '🖼️', label: 'Image', color: '#8b5cf6' },
+  gif:  { icon: '🖼️', label: 'Image', color: '#8b5cf6' },
+  webp: { icon: '🖼️', label: 'Image', color: '#8b5cf6' },
+  svg:  { icon: '🖼️', label: 'Image', color: '#8b5cf6' },
+  bmp:  { icon: '🖼️', label: 'Image', color: '#8b5cf6' },
+  txt:  { icon: '📝', label: 'Text',  color: '#64748b' },
+  csv:  { icon: '📝', label: 'CSV',   color: '#64748b' },
+  md:   { icon: '📝', label: 'MD',    color: '#64748b' },
+  json: { icon: '📝', label: 'JSON',  color: '#64748b' },
+  xml:  { icon: '📝', label: 'XML',   color: '#64748b' },
+  js:   { icon: '📝', label: 'JS',    color: '#eab308' },
+  ts:   { icon: '📝', label: 'TS',    color: '#3b82f6' },
+  html: { icon: '📝', label: 'HTML',  color: '#f97316' },
+  css:  { icon: '📝', label: 'CSS',   color: '#06b6d4' },
+  zip:  { icon: '📦', label: 'ZIP',   color: '#78716c' },
+  rar:  { icon: '📦', label: 'RAR',   color: '#78716c' },
+  '7z': { icon: '📦', label: '7Z',    color: '#78716c' },
+  mp3:  { icon: '🎵', label: 'Audio', color: '#ec4899' },
+  mp4:  { icon: '🎬', label: 'Video', color: '#f43f5e' },
+  mov:  { icon: '🎬', label: 'Video', color: '#f43f5e' },
+};
+
+function getFileType(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  return FILE_TYPES[ext] || { icon: '📦', label: ext.toUpperCase() || 'FILE', color: '#78716c' };
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(2) + ' MB';
+}
+
+function formatDate(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+// ─── IndexedDB ──────────────────────────────────────────────
+let db = null;
+
+async function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE_FILES)) {
+        const fs = d.createObjectStore(STORE_FILES, { keyPath: 'id' });
+        fs.createIndex('categoryId', 'categoryId', { unique: false });
+      }
+      if (!d.objectStoreNames.contains(STORE_CATEGORIES)) {
+        d.createObjectStore(STORE_CATEGORIES, { keyPath: 'id' });
+      }
+    };
+
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+async function dbGet(store, key) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbGetAll(store) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbPut(store, value) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).put(value);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbDelete(store, key) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ─── App State ──────────────────────────────────────────────
+const state = {
+  categories: [],   // [{id, name, colorIndex, order, subcategories:[{id,name}]}]
+  files: [],        // [{id, name, categoryId, subcategoryId, tags, size, addedAt, mimeType, data}]
+  searchQuery: '',
+  darkMode: false,
+  dragFileId: null,
+  currentContextFileId: null,
+  viewerState: {
+    fileId: null,
+    pdfDoc: null,
+    pdfPage: 1,
+    pdfTotal: 0,
+  },
+};
+
+// Track which categories are expanded so renderAll() preserves open state
+const expandedCategories = new Set();
+
+// ─── Toast ──────────────────────────────────────────────────
+function showToast(message, type = 'success', duration = 3000) {
+  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = (icons[type] || '') + ' ' + message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'fadeOutToast 0.3s ease forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+// ─── Progress Bar ───────────────────────────────────────────
+function showProgress(pct) {
+  const bar = document.getElementById('progressBar');
+  bar.style.display = 'block';
+  bar.style.width = pct + '%';
+  if (pct >= 100) {
+    setTimeout(() => { bar.style.display = 'none'; bar.style.width = '0'; }, 400);
+  }
+}
+
+// ─── Category Management ────────────────────────────────────
+async function loadCategories() {
+  const stored = await dbGetAll(STORE_CATEGORIES);
+  if (stored.length === 0) {
+    for (const c of DEFAULT_CATEGORIES) {
+      await dbPut(STORE_CATEGORIES, c);
+    }
+    state.categories = DEFAULT_CATEGORIES.map(c => ({ ...c, subcategories: c.subcategories || [] }));
+  } else {
+    // Migrate old numeric-id records if needed
+    const migrated = [];
+    for (let c of stored) {
+      if (typeof c.id === 'number') {
+        const newCat = {
+          id: 'cat-' + c.id,
+          name: c.name,
+          colorIndex: c.id % 4,
+          order: c.id,
+          subcategories: [],
+        };
+        await dbDelete(STORE_CATEGORIES, c.id);
+        await dbPut(STORE_CATEGORIES, newCat);
+        // Migrate files belonging to old numeric id
+        for (const f of state.files) {
+          if (f.categoryId === c.id) {
+            f.categoryId = newCat.id;
+            await dbPut(STORE_FILES, f);
+          }
+        }
+        migrated.push(newCat);
+      } else {
+        let dirty = false;
+        if (!c.subcategories) { c.subcategories = []; dirty = true; }
+        if (c.colorIndex === undefined) { c.colorIndex = 0; dirty = true; }
+        if (c.order === undefined) { c.order = 0; dirty = true; }
+        // Ensure all subs have priority and note fields
+        for (const s of c.subcategories) {
+          if (s.priority === undefined) { s.priority = 'none'; dirty = true; }
+          if (s.note === undefined) { s.note = ''; dirty = true; }
+        }
+        if (dirty) await dbPut(STORE_CATEGORIES, c);
+        migrated.push(c);
+      }
+    }
+    state.categories = migrated.sort((a, b) => a.order - b.order);
+  }
+}
+
+async function saveCategory(cat) {
+  try {
+    await dbPut(STORE_CATEGORIES, cat);
+  } catch (err) {
+    showToast('Failed to save category: ' + err.message, 'error');
+    throw err;
+  }
+}
+
+async function addCategory() {
+  const idx = state.categories.length;
+  const newCat = {
+    id: 'cat-' + generateId(),
+    name: 'Category ' + (idx + 1),
+    colorIndex: idx % 4,
+    order: idx,
+    subcategories: [],
+  };
+  state.categories.push(newCat);
+  await dbPut(STORE_CATEGORIES, newCat);
+  renderAll();
+  showToast(`Category "${newCat.name}" added`, 'success');
+}
+
+async function deleteCategory(catId) {
+  const catFiles = state.files.filter(f => f.categoryId === catId);
+  if (catFiles.length > 0) {
+    if (!confirm(`This category has ${catFiles.length} file(s). Delete the category and all its files?`)) return;
+    for (const f of catFiles) {
+      await dbDelete(STORE_FILES, f.id);
+    }
+    state.files = state.files.filter(f => f.categoryId !== catId);
+  }
+  await dbDelete(STORE_CATEGORIES, catId);
+  state.categories = state.categories.filter(c => c.id !== catId);
+  renderAll();
+  showToast('Category deleted', 'info');
+}
+
+async function saveCategoryName(id, name) {
+  const cat = state.categories.find(c => c.id === id);
+  if (cat) {
+    cat.name = name;
+    await saveCategory(cat);
+  }
+}
+
+// ─── Subcategory Management ─────────────────────────────────
+async function addSubcategory(catId) {
+  const cat = state.categories.find(c => c.id === catId);
+  if (!cat) return;
+  const subIdx = cat.subcategories.length + 1;
+  const sub = { id: 'sub-' + generateId(), name: 'Sub ' + subIdx, priority: 'none', note: '' };
+  cat.subcategories.push(sub);
+  await saveCategory(cat);
+  renderAll();
+}
+
+async function deleteSubcategory(catId, subId) {
+  const cat = state.categories.find(c => c.id === catId);
+  if (!cat) return;
+  const subFiles = state.files.filter(f => f.categoryId === catId && f.subcategoryId === subId);
+  if (subFiles.length > 0) {
+    if (!confirm(`This subcategory has ${subFiles.length} file(s). Move them to the category general area and delete the subcategory?`)) return;
+    for (const f of subFiles) {
+      f.subcategoryId = null;
+      await dbPut(STORE_FILES, f);
+    }
+  }
+  cat.subcategories = cat.subcategories.filter(s => s.id !== subId);
+  await saveCategory(cat);
+  expandedCategories.add(catId);
+  renderAll();
+  showToast('Subcategory deleted', 'info');
+}
+
+async function renameSubcategory(catId, subId, newName) {
+  const cat = state.categories.find(c => c.id === catId);
+  if (!cat) return;
+  const sub = cat.subcategories.find(s => s.id === subId);
+  if (sub && newName.trim()) {
+    sub.name = newName.trim();
+    await saveCategory(cat);
+    renderAll();
+  }
+}
+
+// ─── File Management ────────────────────────────────────────
+async function loadFiles() {
+  const allFiles = await dbGetAll(STORE_FILES);
+  // Migrate files with old numeric category IDs
+  for (const f of allFiles) {
+    if (typeof f.categoryId === 'number') {
+      f.categoryId = 'cat-' + f.categoryId;
+      await dbPut(STORE_FILES, f);
+    }
+    if (!f.subcategoryId) f.subcategoryId = null;
+  }
+  state.files = allFiles;
+}
+
+async function addFiles(fileList, targetCategoryId, targetSubcategoryId = null) {
+  if (!targetCategoryId) {
+    targetCategoryId = state.categories.length > 0 ? state.categories[0].id : 'cat-0';
+  }
+  const files = Array.from(fileList);
+  let added = 0;
+  let replaced = 0;
+  showProgress(10);
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+
+      // If a file with the same name exists in the same drop zone, replace it
+      const tSub = targetSubcategoryId || null;
+      const existing = state.files.find(f =>
+        f.name === file.name &&
+        f.categoryId === targetCategoryId &&
+        (f.subcategoryId === tSub || (!f.subcategoryId && !tSub))
+      );
+      if (existing) {
+        existing.data = arrayBuffer;
+        existing.size = file.size;
+        existing.mimeType = file.type || 'application/octet-stream';
+        existing.updatedAt = new Date().toISOString();
+        await dbPut(STORE_FILES, existing);
+        replaced++;
+        showProgress(10 + 80 * ((i + 1) / files.length));
+        continue;
+      }
+
+      const fileRecord = {
+        id: generateId(),
+        name: file.name,
+        categoryId: targetCategoryId,
+        subcategoryId: targetSubcategoryId || null,
+        tags: [],
+        size: file.size,
+        addedAt: Date.now(),
+        mimeType: file.type,
+        data: arrayBuffer,
+      };
+      await dbPut(STORE_FILES, fileRecord);
+      state.files.push(fileRecord);
+      added++;
+    } catch (err) {
+      showToast(`Failed to add ${file.name}: ${err.message}`, 'error');
+    }
+    showProgress(10 + 80 * ((i + 1) / files.length));
+  }
+
+  showProgress(100);
+  renderAll();
+  const parts = [];
+  if (added > 0) parts.push(`Added ${added} file${added > 1 ? 's' : ''}`);
+  if (replaced > 0) parts.push(`File updated`);
+  if (parts.length > 0) showToast(parts.join(' · '), 'success');
+}
+
+async function deleteFile(fileId) {
+  await dbDelete(STORE_FILES, fileId);
+  state.files = state.files.filter(f => f.id !== fileId);
+  renderAll();
+  showToast('File deleted', 'info');
+}
+
+async function renameFile(fileId, newName) {
+  const file = state.files.find(f => f.id === fileId);
+  if (!file) return;
+  file.name = newName;
+  await dbPut(STORE_FILES, file);
+  renderAll();
+  showToast('File renamed', 'success');
+}
+
+async function moveFile(fileId, newCategoryId, newSubcategoryId = null) {
+  const file = state.files.find(f => f.id === fileId);
+  if (!file) return;
+  file.categoryId = newCategoryId;
+  file.subcategoryId = newSubcategoryId || null;
+  await dbPut(STORE_FILES, file);
+  renderAll();
+  showToast('File moved', 'success');
+}
+
+async function duplicateFile(fileId) {
+  const file = state.files.find(f => f.id === fileId);
+  if (!file) return;
+  const nameParts = file.name.lastIndexOf('.');
+  const base = nameParts > 0 ? file.name.slice(0, nameParts) : file.name;
+  const ext = nameParts > 0 ? file.name.slice(nameParts) : '';
+  const newRecord = {
+    ...file,
+    id: generateId(),
+    name: base + ' (copy)' + ext,
+    addedAt: Date.now(),
+    data: file.data.slice(0),
+  };
+  await dbPut(STORE_FILES, newRecord);
+  state.files.push(newRecord);
+  renderAll();
+  showToast('File duplicated', 'success');
+}
+
+async function setFileTags(fileId, tags) {
+  const file = state.files.find(f => f.id === fileId);
+  if (!file) return;
+  file.tags = tags;
+  await dbPut(STORE_FILES, file);
+  renderAll();
+  showToast('Tags saved', 'success');
+}
+
+function downloadFile(fileId) {
+  const file = state.files.find(f => f.id === fileId);
+  if (!file) return;
+  const blob = new Blob([file.data], { type: file.mimeType || 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  showToast('Download started', 'info');
+}
+
+function replaceFile(fileId) {
+  const file = state.files.find(f => f.id === fileId);
+  if (!file) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '*/*';
+  input.addEventListener('change', async () => {
+    const newFile = input.files[0];
+    if (!newFile) return;
+    const buffer = await newFile.arrayBuffer();
+    file.data = buffer;
+    file.size = newFile.size;
+    file.mimeType = newFile.type || 'application/octet-stream';
+    file.updatedAt = new Date().toISOString();
+    await dbPut(STORE_FILES, file);
+    renderAll();
+    showToast(`"${file.name}" replaced successfully`, 'success');
+  });
+  input.click();
+}
+
+async function downloadCategoryAsZip(categoryId) {
+  const catFiles = state.files.filter(f => f.categoryId === categoryId);
+  if (catFiles.length === 0) {
+    showToast('No files in this category', 'warning');
+    return;
+  }
+  if (typeof JSZip === 'undefined') {
+    showToast('JSZip library not loaded', 'error');
+    return;
+  }
+  const cat = state.categories.find(c => c.id === categoryId);
+  showToast('Creating ZIP…', 'info');
+  showProgress(20);
+  const zip = new JSZip();
+  for (const f of catFiles) {
+    zip.file(f.name, f.data);
+  }
+  showProgress(60);
+  const blob = await zip.generateAsync({ type: 'blob' });
+  showProgress(100);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (cat ? cat.name : 'category') + '.zip';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  showToast('ZIP downloaded', 'success');
+}
+
+function exportSummary() {
+  const lines = ['File Organizer — Summary Report', '='.repeat(50), ''];
+  lines.push(`Generated: ${new Date().toLocaleString()}`);
+  lines.push(`Total files: ${state.files.length}`, '');
+
+  for (const cat of state.categories) {
+    const catFiles = state.files.filter(f => f.categoryId === cat.id);
+    lines.push(`### ${cat.name} (${catFiles.length} file${catFiles.length !== 1 ? 's' : ''})`);
+    if (catFiles.length === 0) {
+      lines.push('  (empty)');
+    } else {
+      // General files (no subcategory)
+      const general = catFiles.filter(f => !f.subcategoryId);
+      for (const f of general) {
+        const tags = f.tags && f.tags.length > 0 ? `[${f.tags.join(', ')}]` : '';
+        lines.push(`  • ${f.name} — ${formatSize(f.size)} — Added ${formatDate(f.addedAt)} ${tags}`);
+      }
+      // Subcategories
+      for (const sub of (cat.subcategories || [])) {
+        const subFiles = catFiles.filter(f => f.subcategoryId === sub.id);
+        lines.push(`  [${sub.name}] (${subFiles.length} file${subFiles.length !== 1 ? 's' : ''})`);
+        for (const f of subFiles) {
+          const tags = f.tags && f.tags.length > 0 ? `[${f.tags.join(', ')}]` : '';
+          lines.push(`    • ${f.name} — ${formatSize(f.size)} — Added ${formatDate(f.addedAt)} ${tags}`);
+        }
+      }
+    }
+    lines.push('');
+  }
+
+  const text = lines.join('\n');
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'file-organizer-summary.txt';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  showToast('Summary exported', 'success');
+}
+
+// ─── Render ─────────────────────────────────────────────────
+function getFilteredFiles(categoryId, subcategoryId) {
+  const q = state.searchQuery.trim().toLowerCase();
+  return state.files.filter(f => {
+    if (f.categoryId !== categoryId) return false;
+    if (subcategoryId !== undefined) {
+      // undefined means "all", null means "no subcategory"
+      if (subcategoryId === null && f.subcategoryId) return false;
+      if (subcategoryId !== null && f.subcategoryId !== subcategoryId) return false;
+    }
+    if (!q) return true;
+    return f.name.toLowerCase().includes(q) ||
+      (f.tags && f.tags.some(t => t.toLowerCase().includes(q)));
+  });
+}
+
+function renderAll() {
+  renderCategories();
+}
+
+function renderCategories() {
+  const grid = document.getElementById('categoriesGrid');
+  grid.innerHTML = '';
+  for (const cat of state.categories) {
+    grid.appendChild(createCategoryElement(cat));
+  }
+  buildMoveSubmenu();
+}
+
+function getCatColor(colorIndex) {
+  return CAT_COLORS[colorIndex % CAT_COLORS.length];
+}
+
+function createCategoryElement(cat) {
+  const palette = getCatColor(cat.colorIndex);
+  const zone = document.createElement('div');
+  zone.className = 'category-zone';
+  zone.dataset.categoryId = cat.id;
+
+  // ── Header ──
+  const header = document.createElement('div');
+  header.className = 'category-header';
+
+  const colorBar = document.createElement('div');
+  colorBar.className = 'category-color-bar';
+  colorBar.style.background = palette.color;
+
+  // Collapse toggle (starts collapsed)
+  const collapseBtn = document.createElement('button');
+  collapseBtn.className = 'cat-btn-collapse collapsed';
+  collapseBtn.title = 'Expand / Collapse';
+  collapseBtn.innerHTML = '<span class="arrow">▼</span>';
+
+  const nameWrap = document.createElement('div');
+  nameWrap.className = 'category-name-wrap';
+
+  const nameEl = document.createElement('span');
+  nameEl.className = 'category-name';
+  nameEl.textContent = cat.name;
+  nameEl.title = 'Click to rename';
+
+  const totalFiles = state.files.filter(f => f.categoryId === cat.id).length;
+  const countEl = document.createElement('span');
+  countEl.className = 'category-count';
+  countEl.textContent = totalFiles;
+
+  nameWrap.appendChild(nameEl);
+  nameWrap.appendChild(countEl);
+
+  // Action buttons
+  const actions = document.createElement('div');
+  actions.className = 'category-actions';
+
+  // Add Sub button
+  const addSubBtn = document.createElement('button');
+  addSubBtn.className = 'btn-add-sub';
+  addSubBtn.title = 'Add Subcategory';
+  addSubBtn.textContent = '＋ Sub';
+  addSubBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    expandedCategories.add(cat.id);
+    addSubcategory(cat.id);
+  });
+
+  const zipBtn = document.createElement('button');
+  zipBtn.className = 'cat-btn';
+  zipBtn.title = 'Download as ZIP';
+  zipBtn.textContent = '📦';
+  zipBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    downloadCategoryAsZip(cat.id);
+  });
+
+  actions.appendChild(addSubBtn);
+  actions.appendChild(zipBtn);
+
+  // Delete category button — only show when more than 1 category
+  if (state.categories.length > 1) {
+    const delBtn = document.createElement('button');
+    delBtn.className = 'cat-btn danger';
+    delBtn.title = 'Delete category';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      deleteCategory(cat.id);
+    });
+    actions.appendChild(delBtn);
+  }
+
+  header.appendChild(colorBar);
+  header.appendChild(collapseBtn);
+  header.appendChild(nameWrap);
+  header.appendChild(actions);
+
+  // Inline rename
+  nameEl.addEventListener('click', () => startInlineRenameCategory(nameEl, cat));
+
+  // ── Body (collapsible) ──
+  const body = document.createElement('div');
+  const isExpanded = expandedCategories.has(cat.id);
+  body.className = isExpanded ? 'category-body' : 'category-body collapsed';
+  if (isExpanded) collapseBtn.classList.remove('collapsed');
+
+  // Toggle collapse — track state in expandedCategories
+  collapseBtn.addEventListener('click', () => {
+    const isCollapsed = body.classList.toggle('collapsed');
+    collapseBtn.classList.toggle('collapsed', isCollapsed);
+    if (isCollapsed) expandedCategories.delete(cat.id);
+    else expandedCategories.add(cat.id);
+  });
+
+  // ── Subcategory sections ──
+  for (const sub of (cat.subcategories || [])) {
+    body.appendChild(createSubcategoryElement(cat, sub, palette));
+  }
+
+  // ── General file list (no subcategory) ──
+  const generalLabel = document.createElement('div');
+  generalLabel.style.cssText = 'padding:6px 10px 2px;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;';
+  if ((cat.subcategories || []).length > 0) {
+    generalLabel.textContent = 'General';
+    body.appendChild(generalLabel);
+  }
+
+  const fileList = document.createElement('div');
+  fileList.className = 'file-list';
+  fileList.dataset.categoryId = cat.id;
+  fileList.dataset.subcategoryId = '';
+
+  const filtered = getFilteredFiles(cat.id, null);
+  if (filtered.length === 0 && (cat.subcategories || []).length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    const emptyIcon = document.createElement('div');
+    emptyIcon.className = 'empty-icon';
+    emptyIcon.textContent = '📂';
+    const emptyText = document.createElement('p');
+    const q = state.searchQuery.trim();
+    emptyText.innerHTML = q
+      ? `<strong>No results</strong>No files match "${q}"`
+      : `<strong>Empty category</strong>Drag files here or use the drop zone above`;
+    empty.appendChild(emptyIcon);
+    empty.appendChild(emptyText);
+    fileList.appendChild(empty);
+  } else {
+    for (const f of filtered) {
+      fileList.appendChild(createFileCard(f));
+    }
+  }
+
+  // Drop on general area
+  setupDropZone(fileList, cat.id, null);
+
+  body.appendChild(fileList);
+
+  // ── Drop on whole zone ──
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = e.dataTransfer.types.includes('text/file-id') ? 'move' : 'copy';
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', e => {
+    if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
+  });
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const fileId = e.dataTransfer.getData('text/file-id');
+    if (fileId) {
+      moveFile(fileId, cat.id, null);
+    } else if (e.dataTransfer.files.length > 0) {
+      // Expand before adding
+      if (body.classList.contains('collapsed')) {
+        body.classList.remove('collapsed');
+        collapseBtn.classList.remove('collapsed');
+      }
+      addFiles(e.dataTransfer.files, cat.id, null);
+    }
+  });
+
+  zone.appendChild(header);
+  zone.appendChild(body);
+  return zone;
+}
+
+function createSubcategoryElement(cat, sub, palette) {
+  const section = document.createElement('div');
+  section.className = 'subcategory-section';
+  section.dataset.subcategoryId = sub.id;
+
+  const hdr = document.createElement('div');
+  hdr.className = 'subcategory-header';
+  hdr.style.borderLeftColor = palette.color;
+
+  const toggle = document.createElement('button');
+  toggle.className = 'subcategory-toggle';
+  toggle.innerHTML = '<span class="arr">▼</span>';
+  toggle.title = 'Collapse / Expand';
+
+  const nameEl = document.createElement('span');
+  nameEl.className = 'subcategory-name';
+  nameEl.textContent = sub.name;
+  nameEl.title = 'Click to rename';
+
+  const subFiles = state.files.filter(f => f.categoryId === cat.id && f.subcategoryId === sub.id);
+  const countEl = document.createElement('span');
+  countEl.className = 'subcategory-count';
+  countEl.textContent = subFiles.length;
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'subcategory-del';
+  delBtn.title = 'Delete subcategory';
+  delBtn.textContent = '✕';
+  delBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    deleteSubcategory(cat.id, sub.id);
+  });
+
+  // Priority pill
+  const PRIORITIES = [
+    { key: 'none',      label: '— Priority',  cls: 'priority-none' },
+    { key: 'important', label: '🔴 Important', cls: 'priority-important' },
+    { key: 'medium',    label: '🟡 Medium',    cls: 'priority-medium' },
+    { key: 'low',       label: '🟢 Low',       cls: 'priority-low' },
+  ];
+  const priorityBtn = document.createElement('button');
+  priorityBtn.className = 'sub-priority';
+  const setPriority = (p) => {
+    const def = PRIORITIES.find(x => x.key === p) || PRIORITIES[0];
+    priorityBtn.textContent = def.label;
+    priorityBtn.className = 'sub-priority ' + def.cls;
+  };
+  setPriority(sub.priority || 'none');
+  priorityBtn.addEventListener('click', async e => {
+    e.stopPropagation();
+    const keys = PRIORITIES.map(p => p.key);
+    const cur = sub.priority || 'none';
+    sub.priority = keys[(keys.indexOf(cur) + 1) % keys.length];
+    setPriority(sub.priority);
+    await saveCategory(cat);
+  });
+
+  // Note button
+  const noteBtn = document.createElement('button');
+  noteBtn.className = 'sub-note-btn' + (sub.note ? ' has-note' : '');
+  noteBtn.textContent = '📝';
+  noteBtn.title = sub.note ? 'Edit note' : 'Add note';
+  noteBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    openNoteModal(cat, sub, noteBtn);
+  });
+
+  hdr.appendChild(toggle);
+  hdr.appendChild(nameEl);
+  hdr.appendChild(countEl);
+  hdr.appendChild(priorityBtn);
+  hdr.appendChild(noteBtn);
+  hdr.appendChild(delBtn);
+
+  // Inline rename subcategory
+  nameEl.addEventListener('click', () => startInlineRenameSubcategory(nameEl, cat.id, sub));
+
+  const dropZone = document.createElement('div');
+  dropZone.className = 'subcategory-drop-zone';
+  dropZone.dataset.categoryId = cat.id;
+  dropZone.dataset.subcategoryId = sub.id;
+
+  const filtered = getFilteredFiles(cat.id, sub.id);
+  if (filtered.length === 0) {
+    const emptyEl = document.createElement('div');
+    emptyEl.className = 'sub-empty-state';
+    emptyEl.innerHTML = '<span>📂</span><span>Drag your work here</span>';
+    dropZone.appendChild(emptyEl);
+  } else {
+    for (const f of filtered) {
+      dropZone.appendChild(createFileCard(f));
+    }
+  }
+
+  // Toggle collapse
+  toggle.addEventListener('click', () => {
+    const isCol = dropZone.classList.toggle('hidden');
+    toggle.classList.toggle('collapsed', isCol);
+  });
+
+  // Drop into subcategory
+  setupDropZone(dropZone, cat.id, sub.id);
+
+  section.appendChild(hdr);
+  section.appendChild(dropZone);
+  return section;
+}
+
+function setupDropZone(el, catId, subId) {
+  el.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = e.dataTransfer.types.includes('text/file-id') ? 'move' : 'copy';
+    el.classList.add('drag-over');
+  });
+  el.addEventListener('dragleave', e => {
+    if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+  });
+  el.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    el.classList.remove('drag-over');
+    const fileId = e.dataTransfer.getData('text/file-id');
+    if (fileId) {
+      moveFile(fileId, catId, subId);
+    } else if (e.dataTransfer.files.length > 0) {
+      addFiles(e.dataTransfer.files, catId, subId);
+    }
+  });
+}
+
+function startInlineRenameCategory(nameEl, cat) {
+  const input = document.createElement('input');
+  input.className = 'category-name-input';
+  input.value = cat.name;
+  input.style.width = Math.max(100, nameEl.offsetWidth) + 'px';
+
+  const finish = async () => {
+    const newName = input.value.trim();
+    if (newName && newName !== cat.name) {
+      await saveCategoryName(cat.id, newName);
+      showToast(`Category renamed to "${newName}"`, 'success');
+      renderAll();
+    } else {
+      if (input.parentNode) input.parentNode.replaceChild(nameEl, input);
+    }
+  };
+
+  input.addEventListener('blur', finish);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { if (input.parentNode) input.parentNode.replaceChild(nameEl, input); }
+  });
+
+  nameEl.parentNode.replaceChild(input, nameEl);
+  input.focus();
+  input.select();
+}
+
+function startInlineRenameSubcategory(nameEl, catId, sub) {
+  const input = document.createElement('input');
+  input.className = 'subcategory-name-input';
+  input.value = sub.name;
+
+  const finish = async () => {
+    const newName = input.value.trim();
+    if (newName && newName !== sub.name) {
+      await renameSubcategory(catId, sub.id, newName);
+    } else {
+      if (input.parentNode) input.parentNode.replaceChild(nameEl, input);
+    }
+  };
+
+  input.addEventListener('blur', finish);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { if (input.parentNode) input.parentNode.replaceChild(nameEl, input); }
+  });
+
+  nameEl.parentNode.replaceChild(input, nameEl);
+  input.focus();
+  input.select();
+}
+
+function createFileCard(file) {
+  const ft = getFileType(file.name);
+  const card = document.createElement('div');
+  card.className = 'file-card';
+  card.dataset.fileId = file.id;
+  card.draggable = true;
+
+  const icon = document.createElement('div');
+  icon.className = 'file-icon';
+  icon.textContent = ft.icon;
+
+  const info = document.createElement('div');
+  info.className = 'file-info';
+
+  const name = document.createElement('div');
+  name.className = 'file-name';
+  name.textContent = file.name;
+  name.title = file.name;
+
+  const meta = document.createElement('div');
+  meta.className = 'file-meta';
+
+  const sizeSpan = document.createElement('span');
+  sizeSpan.textContent = formatSize(file.size);
+
+  const typeSpan = document.createElement('span');
+  typeSpan.textContent = ft.label;
+  typeSpan.style.cssText = `background:${ft.color}22;color:${ft.color};padding:1px 5px;border-radius:4px;font-weight:600;`;
+
+  const dateSpan = document.createElement('span');
+  dateSpan.textContent = formatDate(file.addedAt);
+
+  meta.appendChild(sizeSpan);
+  meta.appendChild(typeSpan);
+  meta.appendChild(dateSpan);
+
+  info.appendChild(name);
+  info.appendChild(meta);
+
+  if (file.tags && file.tags.length > 0) {
+    const tagsEl = document.createElement('div');
+    tagsEl.className = 'file-tags';
+    for (const tag of file.tags) {
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.textContent = tag;
+      tagsEl.appendChild(chip);
+    }
+    info.appendChild(tagsEl);
+  }
+
+  card.appendChild(icon);
+  card.appendChild(info);
+
+  // Delete button (visible on hover)
+  const delBtn = document.createElement('button');
+  delBtn.className = 'file-card-del';
+  delBtn.textContent = '✕';
+  delBtn.title = 'Delete file';
+  delBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (confirm(`Delete "${file.name}"? This cannot be undone.`)) deleteFile(file.id);
+  });
+  card.appendChild(delBtn);
+
+  card.addEventListener('click', e => {
+    if (e.target.closest('.context-menu') || e.target.closest('.file-card-del')) return;
+    openViewer(file.id);
+  });
+
+  card.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    showContextMenu(e.clientX, e.clientY, file.id);
+  });
+
+  card.addEventListener('dragstart', e => {
+    state.dragFileId = file.id;
+    e.dataTransfer.setData('text/file-id', file.id);
+    e.dataTransfer.effectAllowed = 'move';
+    card.classList.add('dragging');
+    setTimeout(() => card.classList.remove('dragging'), 0);
+  });
+
+  return card;
+}
+
+// ─── Context Menu ───────────────────────────────────────────
+function buildMoveSubmenu() {
+  const submenu = document.getElementById('ctxMoveSubmenu');
+  submenu.innerHTML = '';
+  for (const cat of state.categories) {
+    // Category-level item
+    const catHeader = document.createElement('div');
+    catHeader.className = 'submenu-subheader';
+    catHeader.textContent = cat.name;
+    submenu.appendChild(catHeader);
+
+    // General (no subcategory)
+    const generalItem = document.createElement('div');
+    generalItem.className = 'context-menu-item';
+    generalItem.textContent = cat.name + ' (general)';
+    generalItem.dataset.catId = cat.id;
+    generalItem.addEventListener('click', e => {
+      e.stopPropagation();
+      if (state.currentContextFileId) moveFile(state.currentContextFileId, cat.id, null);
+      hideContextMenu();
+    });
+    submenu.appendChild(generalItem);
+
+    // Subcategories
+    for (const sub of (cat.subcategories || [])) {
+      const item = document.createElement('div');
+      item.className = 'context-menu-item';
+      item.style.paddingLeft = '22px';
+      item.textContent = '↳ ' + sub.name;
+      item.addEventListener('click', e => {
+        e.stopPropagation();
+        if (state.currentContextFileId) moveFile(state.currentContextFileId, cat.id, sub.id);
+        hideContextMenu();
+      });
+      submenu.appendChild(item);
+    }
+  }
+}
+
+function showContextMenu(x, y, fileId) {
+  state.currentContextFileId = fileId;
+  const menu = document.getElementById('contextMenu');
+  menu.classList.remove('hidden');
+  const menuW = 200;
+  const menuH = 220;
+  const left = Math.min(x, window.innerWidth - menuW - 8);
+  const top = Math.min(y, window.innerHeight - menuH - 8);
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+}
+
+function hideContextMenu() {
+  document.getElementById('contextMenu').classList.add('hidden');
+  state.currentContextFileId = null;
+}
+
+// ─── Dialogs ────────────────────────────────────────────────
+let renameCallback = null;
+let tagCallback = null;
+
+function openRenameDialog(fileId) {
+  const file = state.files.find(f => f.id === fileId);
+  if (!file) return;
+  const dialog = document.getElementById('renameDialog');
+  const input = document.getElementById('renameInput');
+  input.value = file.name;
+  dialog.classList.remove('hidden');
+  input.focus();
+  input.select();
+  renameCallback = (newName) => renameFile(fileId, newName);
+}
+
+function closeRenameDialog() {
+  document.getElementById('renameDialog').classList.add('hidden');
+  renameCallback = null;
+}
+
+function openTagDialog(fileId) {
+  const file = state.files.find(f => f.id === fileId);
+  if (!file) return;
+  const dialog = document.getElementById('tagDialog');
+  const input = document.getElementById('tagInput');
+  input.value = file.tags ? file.tags.join(', ') : '';
+  dialog.classList.remove('hidden');
+  input.focus();
+  tagCallback = (tags) => setFileTags(fileId, tags);
+}
+
+function closeTagDialog() {
+  document.getElementById('tagDialog').classList.add('hidden');
+  tagCallback = null;
+}
+
+// ─── File Viewer ────────────────────────────────────────────
+async function openViewer(fileId) {
+  const file = state.files.find(f => f.id === fileId);
+  if (!file) return;
+
+  const modal = document.getElementById('viewerModal');
+  const body = document.getElementById('viewerBody');
+  const title = document.getElementById('viewerTitle');
+  const icon = document.getElementById('viewerIcon');
+  const pdfNav = document.getElementById('pdfNav');
+  const downloadBtn = document.getElementById('downloadFromViewer');
+
+  state.viewerState.fileId = fileId;
+  state.viewerState.pdfDoc = null;
+  state.viewerState.pdfPage = 1;
+
+  const ft = getFileType(file.name);
+  icon.textContent = ft.icon;
+  title.textContent = file.name;
+  pdfNav.style.display = 'none';
+  body.innerHTML = '<div class="loading-overlay"><div class="spinner"></div>Loading…</div>';
+  modal.classList.remove('hidden');
+
+  downloadBtn.onclick = () => downloadFile(fileId);
+
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  try {
+    if (ext === 'pdf') {
+      await renderPDF(file, body);
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      await renderExcel(file, body);
+    } else if (ext === 'docx') {
+      await renderWord(file, body);
+    } else if (['png','jpg','jpeg','gif','webp','svg','bmp'].includes(ext)) {
+      renderImage(file, body);
+    } else if (['txt','csv','md','json','xml','js','ts','html','css','log','py','java','c','cpp','cs','rb','php','sh','bat'].includes(ext)) {
+      renderText(file, body);
+    } else {
+      renderFileInfo(file, body);
+    }
+  } catch (err) {
+    body.innerHTML = `<div class="loading-overlay" style="flex-direction:column;gap:8px;">
+      <div style="font-size:40px;">⚠️</div>
+      <p style="color:var(--text-secondary);">Could not display this file</p>
+      <p style="color:var(--text-muted);font-size:12px;">${err.message}</p>
+    </div>`;
+    console.error('Viewer error:', err);
+  }
+}
+
+async function renderPDF(file, container) {
+  if (typeof pdfjsLib === 'undefined') {
+    throw new Error('PDF.js library not available. Check internet connection.');
+  }
+  const pdfNav = document.getElementById('pdfNav');
+  container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div>Loading PDF…</div>';
+
+  const uint8 = new Uint8Array(file.data);
+  const pdf = await pdfjsLib.getDocument({ data: uint8 }).promise;
+  state.viewerState.pdfDoc = pdf;
+  state.viewerState.pdfTotal = pdf.numPages;
+  state.viewerState.pdfPage = 1;
+
+  pdfNav.style.display = 'flex';
+  document.getElementById('pdfPageInfo').textContent = `1 / ${pdf.numPages}`;
+
+  container.innerHTML = '<div class="pdf-viewer"><canvas id="pdfCanvas"></canvas></div>';
+  await renderPDFPage();
+}
+
+async function renderPDFPage() {
+  const { pdfDoc, pdfPage } = state.viewerState;
+  if (!pdfDoc) return;
+  const page = await pdfDoc.getPage(pdfPage);
+  const canvas = document.getElementById('pdfCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const maxWidth = document.getElementById('viewerBody').clientWidth - 40;
+  const viewport0 = page.getViewport({ scale: 1 });
+  const scale = Math.min(2, maxWidth / viewport0.width);
+  const viewport = page.getViewport({ scale });
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  document.getElementById('pdfPageInfo').textContent = `${pdfPage} / ${state.viewerState.pdfTotal}`;
+}
+
+async function renderExcel(file, container) {
+  if (typeof XLSX === 'undefined') {
+    throw new Error('SheetJS library not available.');
+  }
+  const data = new Uint8Array(file.data);
+  const wb = XLSX.read(data, { type: 'array' });
+  const sheetNames = wb.SheetNames;
+
+  let currentSheet = sheetNames[0];
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'excel-viewer';
+
+  const tabs = document.createElement('div');
+  tabs.className = 'sheet-tabs';
+
+  const tableArea = document.createElement('div');
+  tableArea.className = 'table-wrap';
+
+  function renderSheet(name) {
+    currentSheet = name;
+    tabs.querySelectorAll('.sheet-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.sheet === name);
+    });
+    const ws = wb.Sheets[name];
+    const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    if (!json.length) {
+      tableArea.innerHTML = '<div class="loading-overlay">Empty sheet</div>';
+      return;
+    }
+    const table = document.createElement('table');
+    table.className = 'excel-table';
+    const thead = document.createElement('thead');
+    const hr = document.createElement('tr');
+    const maxCols = Math.max(...json.map(r => r.length));
+    const headerRow = json[0];
+    for (let c = 0; c < maxCols; c++) {
+      const th = document.createElement('th');
+      th.textContent = headerRow[c] !== undefined ? String(headerRow[c]) : '';
+      hr.appendChild(th);
+    }
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    for (let r = 1; r < json.length; r++) {
+      const row = json[r];
+      const tr = document.createElement('tr');
+      for (let c = 0; c < maxCols; c++) {
+        const td = document.createElement('td');
+        const val = row[c];
+        td.textContent = val !== undefined && val !== null ? String(val) : '';
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    tableArea.innerHTML = '';
+    tableArea.appendChild(table);
+  }
+
+  for (const name of sheetNames) {
+    const tab = document.createElement('div');
+    tab.className = 'sheet-tab';
+    tab.dataset.sheet = name;
+    tab.textContent = name;
+    if (name === sheetNames[0]) tab.classList.add('active');
+    tab.addEventListener('click', () => renderSheet(name));
+    tabs.appendChild(tab);
+  }
+
+  wrapper.appendChild(tabs);
+  wrapper.appendChild(tableArea);
+  container.innerHTML = '';
+  container.appendChild(wrapper);
+  renderSheet(sheetNames[0]);
+}
+
+async function renderWord(file, container) {
+  if (typeof mammoth === 'undefined') {
+    throw new Error('Mammoth.js library not available.');
+  }
+  container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div>Converting document…</div>';
+  const result = await mammoth.convertToHtml({ arrayBuffer: file.data });
+  if (result.messages && result.messages.some(m => m.type === 'error')) {
+    console.warn('Mammoth warnings:', result.messages);
+  }
+  const div = document.createElement('div');
+  div.className = 'word-viewer';
+  div.innerHTML = result.value || '<p style="color:var(--text-muted)">Document appears to be empty.</p>';
+  container.innerHTML = '';
+  container.appendChild(div);
+}
+
+function renderImage(file, container) {
+  const blob = new Blob([file.data], { type: file.mimeType || 'image/*' });
+  const url = URL.createObjectURL(blob);
+  const div = document.createElement('div');
+  div.className = 'image-viewer';
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = file.name;
+  img.onload = () => URL.revokeObjectURL(url);
+  div.appendChild(img);
+  container.innerHTML = '';
+  container.appendChild(div);
+}
+
+function renderText(file, container) {
+  const decoder = new TextDecoder('utf-8');
+  const text = decoder.decode(file.data);
+  const div = document.createElement('div');
+  div.className = 'text-viewer';
+  const pre = document.createElement('pre');
+  pre.textContent = text;
+  div.appendChild(pre);
+  container.innerHTML = '';
+  container.appendChild(div);
+}
+
+function renderFileInfo(file, container) {
+  const ft = getFileType(file.name);
+  const cat = state.categories.find(c => c.id === file.categoryId);
+  const div = document.createElement('div');
+  div.className = 'file-info-viewer';
+  div.innerHTML = `
+    <div class="big-icon">${ft.icon}</div>
+    <div>
+      <strong style="font-size:16px;">${escHtml(file.name)}</strong>
+    </div>
+    <table class="info-table">
+      <tr><td>Type</td><td>${ft.label}</td></tr>
+      <tr><td>Size</td><td>${formatSize(file.size)}</td></tr>
+      <tr><td>Added</td><td>${formatDate(file.addedAt)}</td></tr>
+      <tr><td>Category</td><td>${cat ? escHtml(cat.name) : '—'}</td></tr>
+      ${file.tags && file.tags.length ? `<tr><td>Tags</td><td>${file.tags.map(t => `<span class="tag-chip">${escHtml(t)}</span>`).join(' ')}</td></tr>` : ''}
+    </table>
+    <p style="color:var(--text-muted);font-size:13px;">This file type cannot be previewed inline.</p>
+  `;
+  container.innerHTML = '';
+  container.appendChild(div);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Safe base64 encode for large ArrayBuffers (avoids btoa string limit)
+function bufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000; // 32KB chunks
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+// Safe base64 decode back to ArrayBuffer
+function base64ToBuffer(b64) {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+async function buildBackupPayload() {
+  // Deep-clone categories so mutations during save don't affect snapshot
+  const categories = JSON.parse(JSON.stringify(state.categories));
+  const filesRaw = await dbGetAll(STORE_FILES);
+  const files = filesRaw.map(f => ({
+    id:           f.id,
+    name:         f.name,
+    categoryId:   f.categoryId,
+    subcategoryId: f.subcategoryId || null,
+    tags:         f.tags || [],
+    size:         f.size,
+    addedAt:      f.addedAt,
+    updatedAt:    f.updatedAt || null,
+    mimeType:     f.mimeType || 'application/octet-stream',
+    data:         bufferToBase64(f.data),
+  }));
+  return {
+    version: 3,
+    savedAt: new Date().toISOString(),
+    categories,
+    files,
+    links:  JSON.parse(localStorage.getItem('fo-links')  || 'null'),
+    emails: JSON.parse(localStorage.getItem('fo-emails') || '[]'),
+  };
+}
+
+async function saveJson() {
+  showToast('Building JSON backup…', 'info', 2000);
+  try {
+    const backup = await buildBackupPayload();
+    const jsonStr = JSON.stringify(backup);
+    triggerDownload(new Blob([jsonStr], { type: 'application/json' }), 'filedrop-backup.json');
+    showToast(`JSON saved — ${backup.files.length} file${backup.files.length !== 1 ? 's' : ''}`, 'success', 4000);
+  } catch (err) {
+    showToast('JSON save failed: ' + err.message, 'error');
+    console.error('saveJson error:', err);
+  }
+}
+
+async function saveHtml() {
+  showToast('Building HTML file…', 'info', 2000);
+  try {
+    const backup = await buildBackupPayload();
+    const jsonStr = JSON.stringify(backup);
+
+    // Strip any previously embedded seed block
+    const seedStart = '<!--__FILEDROP_SEED_START__-->';
+    const seedEnd   = '<!--__FILEDROP_SEED_END__-->';
+    let baseHtml = document.documentElement.outerHTML;
+    const s = baseHtml.indexOf(seedStart);
+    const e = baseHtml.indexOf(seedEnd);
+    if (s !== -1 && e !== -1) baseHtml = baseHtml.slice(0, s) + baseHtml.slice(e + seedEnd.length);
+
+    const seedBlock = `${seedStart}<script>
+(function(){
+  const PAYLOAD=${jsonStr};
+  const DN='FileOrganizerDB',DV=3,SF='files',SC='categories';
+  function open(cb){
+    const r=indexedDB.open(DN,DV);
+    r.onupgradeneeded=function(e){
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains(SF)){const s=d.createObjectStore(SF,{keyPath:'id'});s.createIndex('categoryId','categoryId',{unique:false});}
+      if(!d.objectStoreNames.contains(SC))d.createObjectStore(SC,{keyPath:'id'});
+    };
+    r.onsuccess=function(e){cb(e.target.result);};
+    r.onerror=function(){cb(null);};
+  }
+  function b64ToBuf(b){const s=atob(b);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer;}
+  open(function(db){
+    if(!db)return;
+    const chk=db.transaction(SF,'readonly').objectStore(SF).count();
+    chk.onsuccess=function(e){
+      if(e.target.result>0)return;
+      const tx=db.transaction([SF,SC],'readwrite');
+      tx.onerror=function(e){console.error('FileDrop seed error',e.target.error);};
+      for(const c of PAYLOAD.categories){const cc=JSON.parse(JSON.stringify(c));tx.objectStore(SC).put(cc);}
+      for(const f of PAYLOAD.files){const ff=Object.assign({},f);ff.data=b64ToBuf(ff.data);tx.objectStore(SF).put(ff);}
+      tx.oncomplete=function(){
+        if(PAYLOAD.links)localStorage.setItem('fo-links',JSON.stringify(PAYLOAD.links));
+        if(PAYLOAD.emails)localStorage.setItem('fo-emails',JSON.stringify(PAYLOAD.emails));
+      };
+    };
+  });
+})();
+<\/script>${seedEnd}`;
+
+    const htmlSource = '<!DOCTYPE html>\n' + baseHtml.replace('</body>', seedBlock + '\n</body>');
+    triggerDownload(new Blob([htmlSource], { type: 'text/html' }), 'filedrop.html');
+    showToast(`HTML saved — ${backup.files.length} file${backup.files.length !== 1 ? 's' : ''}`, 'success', 4000);
+  } catch (err) {
+    showToast('HTML save failed: ' + err.message, 'error');
+    console.error('saveHtml error:', err);
+  }
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+async function restoreWorkspace(file) {
+  if (!file) return;
+  if (!confirm('Restore from backup? This will replace all current categories and files.')) return;
+  showToast('Restoring…', 'info', 3000);
+  try {
+    const text = await file.text();
+    const backup = JSON.parse(text);
+    if (!backup.version || !Array.isArray(backup.categories) || !Array.isArray(backup.files)) {
+      showToast('Invalid backup file.', 'error'); return;
+    }
+
+    // Clear existing data first
+    const existingFiles = await dbGetAll(STORE_FILES);
+    for (const f of existingFiles) await dbDelete(STORE_FILES, f.id);
+    const existingCats = await dbGetAll(STORE_CATEGORIES);
+    for (const c of existingCats) await dbDelete(STORE_CATEGORIES, c.id);
+
+    // Restore categories
+    for (const cat of backup.categories) {
+      const c = JSON.parse(JSON.stringify(cat));
+      if (!c.subcategories) c.subcategories = [];
+      for (const s of c.subcategories) {
+        if (!s.priority) s.priority = 'none';
+        if (s.note === undefined) s.note = '';
+      }
+      await dbPut(STORE_CATEGORIES, c);
+    }
+
+    // Restore files — decode base64 → ArrayBuffer, keep in state as ArrayBuffer
+    const restoredFiles = [];
+    for (const f of backup.files) {
+      const rec = {
+        id:           f.id,
+        name:         f.name,
+        categoryId:   f.categoryId,
+        subcategoryId: f.subcategoryId || null,
+        tags:         f.tags || [],
+        size:         f.size,
+        addedAt:      f.addedAt,
+        updatedAt:    f.updatedAt || null,
+        mimeType:     f.mimeType || 'application/octet-stream',
+        data:         base64ToBuffer(f.data),
+      };
+      await dbPut(STORE_FILES, rec);
+      restoredFiles.push(rec);
+    }
+
+    // Restore sidebar
+    if (backup.links)  localStorage.setItem('fo-links',  JSON.stringify(backup.links));
+    if (backup.emails) localStorage.setItem('fo-emails', JSON.stringify(backup.emails));
+
+    // Update live state
+    state.categories = backup.categories.map(c => {
+      const cc = JSON.parse(JSON.stringify(c));
+      if (!cc.subcategories) cc.subcategories = [];
+      for (const s of cc.subcategories) { if (!s.priority) s.priority='none'; if(s.note===undefined)s.note=''; }
+      return cc;
+    });
+    state.files = restoredFiles;
+
+    renderAll();
+    loadLinks();
+    loadEmails();
+    showToast(`Restored — ${restoredFiles.length} files, ${backup.categories.length} categories`, 'success', 4000);
+  } catch (err) {
+    showToast('Restore failed: ' + err.message, 'error');
+    console.error('restoreWorkspace error:', err);
+  }
+}
+
+function closeViewer() {
+  document.getElementById('viewerModal').classList.add('hidden');
+  document.getElementById('viewerBody').innerHTML = '';
+  document.getElementById('pdfNav').style.display = 'none';
+  state.viewerState = { fileId: null, pdfDoc: null, pdfPage: 1, pdfTotal: 0 };
+}
+
+// ─── Subcategory Note Modal ─────────────────────────────────
+let _noteCat = null, _noteSub = null, _noteBtn = null;
+
+function openNoteModal(cat, sub, btn) {
+  _noteCat = cat; _noteSub = sub; _noteBtn = btn;
+  document.getElementById('noteModalText').value = sub.note || '';
+  document.getElementById('noteModalBg').classList.remove('hidden');
+  document.getElementById('noteModalText').focus();
+}
+
+function closeNoteModal() {
+  document.getElementById('noteModalBg').classList.add('hidden');
+  _noteCat = null; _noteSub = null; _noteBtn = null;
+}
+
+async function saveNote() {
+  if (!_noteSub) return;
+  _noteSub.note = document.getElementById('noteModalText').value.trim();
+  if (_noteBtn) {
+    _noteBtn.className = 'sub-note-btn' + (_noteSub.note ? ' has-note' : '');
+    _noteBtn.title = _noteSub.note ? 'Edit note' : 'Add note';
+  }
+  await saveCategory(_noteCat);
+  closeNoteModal();
+  showToast('Note saved', 'success');
+}
+
+// ─── Event Wiring ───────────────────────────────────────────
+function wireEvents() {
+  // Theme toggle
+  document.getElementById('themeToggleBtn').addEventListener('click', () => {
+    state.darkMode = !state.darkMode;
+    document.documentElement.setAttribute('data-theme', state.darkMode ? 'dark' : '');
+    document.getElementById('themeToggleBtn').textContent = state.darkMode ? '☀️' : '🌙';
+    localStorage.setItem('fo-dark', state.darkMode ? '1' : '0');
+  });
+
+  // Search
+  document.getElementById('searchInput').addEventListener('input', e => {
+    state.searchQuery = e.target.value;
+    renderAll();
+  });
+
+  // Import button
+  document.getElementById('importFilesBtn').addEventListener('click', () => {
+    document.getElementById('headerFileInput').click();
+  });
+  document.getElementById('headerFileInput').addEventListener('change', e => {
+    if (e.target.files.length) {
+      const defaultCatId = state.categories.length > 0 ? state.categories[0].id : null;
+      addFiles(e.target.files, defaultCatId);
+    }
+    e.target.value = '';
+  });
+
+  // Add category button
+  document.getElementById('addCategoryBtn').addEventListener('click', addCategory);
+
+  // Global drop zone
+  const globalDZ = document.getElementById('globalDropZone');
+  globalDZ.addEventListener('click', () => document.getElementById('globalFileInput').click());
+  document.getElementById('globalFileInput').addEventListener('change', e => {
+    if (e.target.files.length) {
+      const defaultCatId = state.categories.length > 0 ? state.categories[0].id : null;
+      addFiles(e.target.files, defaultCatId);
+    }
+    e.target.value = '';
+  });
+  globalDZ.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    globalDZ.classList.add('drag-over');
+  });
+  globalDZ.addEventListener('dragleave', e => {
+    if (!globalDZ.contains(e.relatedTarget)) globalDZ.classList.remove('drag-over');
+  });
+  globalDZ.addEventListener('drop', e => {
+    e.preventDefault();
+    globalDZ.classList.remove('drag-over');
+    const fileId = e.dataTransfer.getData('text/file-id');
+    if (!fileId && e.dataTransfer.files.length > 0) {
+      const defaultCatId = state.categories.length > 0 ? state.categories[0].id : null;
+      addFiles(e.dataTransfer.files, defaultCatId);
+    }
+  });
+
+  // Global body drag over (prevent browser open)
+  document.body.addEventListener('dragover', e => e.preventDefault());
+  document.body.addEventListener('drop', e => {
+    e.preventDefault();
+    const fileId = e.dataTransfer.getData('text/file-id');
+    if (!fileId && e.dataTransfer.files.length > 0) {
+      const defaultCatId = state.categories.length > 0 ? state.categories[0].id : null;
+      addFiles(e.dataTransfer.files, defaultCatId);
+    }
+  });
+
+  // Restore backup
+  document.getElementById('restoreBtn').addEventListener('click', () => {
+    document.getElementById('restoreFileInput').click();
+  });
+  document.getElementById('restoreFileInput').addEventListener('change', e => {
+    if (e.target.files[0]) restoreWorkspace(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  // Email drop zone
+  const emailDZ = document.getElementById('emailDropZone');
+  emailDZ.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+    emailDZ.classList.add('drag-over');
+  });
+  emailDZ.addEventListener('dragleave', e => {
+    if (!emailDZ.contains(e.relatedTarget)) emailDZ.classList.remove('drag-over');
+  });
+  emailDZ.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    emailDZ.classList.remove('drag-over');
+    const prefill = {};
+
+    if (e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+
+      // Use filename (stripped of extension) as subject — same as reference app
+      prefill.subject = file.name.replace(/\.(msg|eml|txt|mht|mhtml)$/i, '').trim();
+
+      // Set today's date as default received date
+      prefill.date = new Date().toISOString().split('T')[0];
+
+      const isReadable = file.type === 'text/plain' || file.type === 'message/rfc822'
+                      || /\.(eml|txt|mht|mhtml)$/i.test(file.name);
+
+      if (isReadable) {
+        // Read file content and try to parse email headers to override defaults
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const text = ev.target.result || '';
+          const subjectMatch = text.match(/^Subject:\s*(.+)/im);
+          const fromMatch    = text.match(/^From:\s*(.+)/im);
+          const dateMatch    = text.match(/^Date:\s*(.+)/im);
+          if (subjectMatch) prefill.subject = subjectMatch[1].replace(/\r/g, '').trim();
+          if (fromMatch)    prefill.sender  = fromMatch[1].replace(/<[^>]+>/g, '').replace(/\r/g, '').trim();
+          if (dateMatch) {
+            const d = new Date(dateMatch[1].trim());
+            if (!isNaN(d)) prefill.date = d.toISOString().split('T')[0];
+          }
+          // Put email body below the headers (skip header block)
+          const bodyStart = text.search(/\r?\n\r?\n/);
+          prefill.body = bodyStart !== -1 ? text.slice(bodyStart).trim() : text;
+          openEmailModal(prefill);
+        };
+        reader.onerror = () => openEmailModal(prefill);
+        reader.readAsText(file);
+        return; // openEmailModal called inside reader.onload
+      }
+    }
+    openEmailModal(prefill);
+  });
+
+  // Save button (Ctrl+S)
+  document.getElementById('saveJsonBtn').addEventListener('click', saveJson);
+  document.getElementById('saveHtmlBtn').addEventListener('click', saveHtml);
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveJson(); }
+  });
+
+  // Close viewer
+  document.getElementById('closeViewerBtn').addEventListener('click', closeViewer);
+  document.getElementById('viewerModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('viewerModal')) closeViewer();
+  });
+
+  // PDF nav
+  document.getElementById('pdfPrevBtn').addEventListener('click', async () => {
+    if (state.viewerState.pdfPage > 1) {
+      state.viewerState.pdfPage--;
+      await renderPDFPage();
+    }
+  });
+  document.getElementById('pdfNextBtn').addEventListener('click', async () => {
+    if (state.viewerState.pdfPage < state.viewerState.pdfTotal) {
+      state.viewerState.pdfPage++;
+      await renderPDFPage();
+    }
+  });
+
+  // Context menu actions
+  document.getElementById('ctxRename').addEventListener('click', () => {
+    const id = state.currentContextFileId;
+    hideContextMenu();
+    if (id) openRenameDialog(id);
+  });
+  document.getElementById('ctxTags').addEventListener('click', () => {
+    const id = state.currentContextFileId;
+    hideContextMenu();
+    if (id) openTagDialog(id);
+  });
+  document.getElementById('ctxDuplicate').addEventListener('click', () => {
+    const id = state.currentContextFileId;
+    hideContextMenu();
+    if (id) duplicateFile(id);
+  });
+  document.getElementById('ctxDownload').addEventListener('click', () => {
+    const id = state.currentContextFileId;
+    hideContextMenu();
+    if (id) downloadFile(id);
+  });
+  document.getElementById('ctxReplace').addEventListener('click', () => {
+    const id = state.currentContextFileId;
+    hideContextMenu();
+    if (id) replaceFile(id);
+  });
+  document.getElementById('ctxDelete').addEventListener('click', () => {
+    const id = state.currentContextFileId;
+    hideContextMenu();
+    if (id && confirm('Delete this file? This cannot be undone.')) {
+      deleteFile(id);
+    }
+  });
+
+  // Hide context menu on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#contextMenu')) hideContextMenu();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      hideContextMenu();
+      closeViewer();
+      closeRenameDialog();
+      closeTagDialog();
+      closeEmailModal();
+      closeNoteModal();
+      closeEmailPreview();
+    }
+  });
+
+  // Rename dialog
+  document.getElementById('renameCancelBtn').addEventListener('click', closeRenameDialog);
+  document.getElementById('renameDialog').addEventListener('click', e => {
+    if (e.target === document.getElementById('renameDialog')) closeRenameDialog();
+  });
+  document.getElementById('renameConfirmBtn').addEventListener('click', () => {
+    const val = document.getElementById('renameInput').value.trim();
+    if (val && renameCallback) {
+      renameCallback(val);
+    }
+    closeRenameDialog();
+  });
+  document.getElementById('renameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('renameConfirmBtn').click();
+  });
+
+  // Tag dialog
+  document.getElementById('tagCancelBtn').addEventListener('click', closeTagDialog);
+  document.getElementById('tagDialog').addEventListener('click', e => {
+    if (e.target === document.getElementById('tagDialog')) closeTagDialog();
+  });
+  document.getElementById('tagConfirmBtn').addEventListener('click', () => {
+    const val = document.getElementById('tagInput').value;
+    const tags = val.split(',').map(t => t.trim()).filter(Boolean);
+    if (tagCallback) tagCallback(tags);
+    closeTagDialog();
+  });
+  document.getElementById('tagInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('tagConfirmBtn').click();
+  });
+
+  // Panel toggles
+  setupPanelToggle('linksPanelHeader', 'linksPanelBody', 'linksPanelToggle');
+  setupPanelToggle('emailsPanelHeader', 'emailsPanelBody', 'emailsPanelToggle');
+
+  // Saved links
+  document.getElementById('linkInput').addEventListener('keydown', e => { if (e.key === 'Enter') addLink(); });
+  document.getElementById('linkAddBtn').addEventListener('click', addLink);
+  document.getElementById('newSectionInput').addEventListener('keydown', e => { if (e.key === 'Enter') addLinkSection(); });
+  document.getElementById('newSectionBtn').addEventListener('click', addLinkSection);
+
+  // Emails
+  document.getElementById('addEmailBtn').addEventListener('click', openEmailModal);
+  document.getElementById('emailModalCancel').addEventListener('click', closeEmailModal);
+  document.getElementById('emailModalSave').addEventListener('click', saveEmail);
+  document.getElementById('emailModalBg').addEventListener('click', e => {
+    if (e.target === document.getElementById('emailModalBg')) closeEmailModal();
+  });
+
+  // Note modal
+  document.getElementById('noteModalCancel').addEventListener('click', closeNoteModal);
+  document.getElementById('noteModalSave').addEventListener('click', saveNote);
+  document.getElementById('noteModalBg').addEventListener('click', e => {
+    if (e.target === document.getElementById('noteModalBg')) closeNoteModal();
+  });
+  document.getElementById('noteModalText').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveNote();
+  });
+
+  // Email preview modal
+  document.getElementById('emailPreviewClose').addEventListener('click', closeEmailPreview);
+  document.getElementById('emailPreviewCloseBtn').addEventListener('click', closeEmailPreview);
+  document.getElementById('emailPreviewBg').addEventListener('click', e => {
+    if (e.target === document.getElementById('emailPreviewBg')) closeEmailPreview();
+  });
+}
+
+// ─── Startup ────────────────────────────────────────────────
+async function init() {
+  showProgress(20);
+  try {
+    db = await openDB();
+    showProgress(35);
+    // Load files first so migration in loadCategories can update file categoryIds
+    const rawFiles = await dbGetAll(STORE_FILES);
+    state.files = rawFiles;
+    showProgress(50);
+    await loadCategories();
+    showProgress(65);
+    // Re-load files after potential migration
+    state.files = await dbGetAll(STORE_FILES);
+    // Ensure subcategoryId field exists
+    for (const f of state.files) {
+      if (f.subcategoryId === undefined) f.subcategoryId = null;
+    }
+    showProgress(80);
+    renderAll();
+    wireEvents();
+    loadLinks();
+    loadEmails();
+
+    // Restore dark mode
+    const savedDark = localStorage.getItem('fo-dark');
+    if (savedDark === '1') {
+      state.darkMode = true;
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.getElementById('themeToggleBtn').textContent = '☀️';
+    }
+
+    showProgress(100);
+    console.log(`File Organizer ready. ${state.files.length} files, ${state.categories.length} categories loaded.`);
+  } catch (err) {
+    showProgress(100);
+    showToast('Failed to initialize database: ' + err.message, 'error', 6000);
+    console.error('Init error:', err);
+  }
+}
+
+// ─── Saved Links ────────────────────────────────────────────
+// Data model: { sections: [{name, collapsed, links:[{url,label}]}] }
+const LS_LINKS = 'fo-links';
+let linksData = { sections: [] };
+// Track collapsed state per section by name
+const linkSectionCollapsed = {};
+
+function loadLinks() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_LINKS) || 'null');
+    if (raw && Array.isArray(raw.sections)) {
+      linksData = raw;
+    } else if (Array.isArray(raw)) {
+      // Migrate old flat array format
+      linksData = { sections: [{ name: 'General', links: raw }] };
+    } else {
+      linksData = { sections: [] };
+    }
+  } catch(e) { linksData = { sections: [] }; }
+  renderLinks();
+}
+
+function saveLinks() { localStorage.setItem(LS_LINKS, JSON.stringify(linksData)); }
+
+function renderLinkSectionSelect() {
+  const sel = document.getElementById('linkSectionSelect');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  linksData.sections.forEach((s, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+  if (linksData.sections.length === 0) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '— add a section first —';
+    sel.appendChild(opt);
+  }
+  // Restore selection if still valid
+  if (prev !== '' && prev < linksData.sections.length) sel.value = prev;
+}
+
+function renderLinks() {
+  renderLinkSectionSelect();
+  const list = document.getElementById('linkList');
+  list.innerHTML = '';
+  if (!linksData.sections.length) {
+    const empty = document.createElement('div');
+    empty.className = 'panel-empty';
+    empty.textContent = 'Add a section, then paste links.';
+    list.appendChild(empty);
+    return;
+  }
+  linksData.sections.forEach((section, sIdx) => {
+    const group = document.createElement('div');
+    group.className = 'link-section-group';
+
+    // Section heading row
+    const heading = document.createElement('div');
+    heading.className = 'link-section-heading';
+
+    const arrow = document.createElement('span');
+    arrow.className = 'link-section-heading-arrow' + (linkSectionCollapsed[section.name] ? ' collapsed' : '');
+    arrow.textContent = '▼';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'link-section-name';
+    nameEl.textContent = section.name;
+
+    const delSec = document.createElement('button');
+    delSec.className = 'link-section-del';
+    delSec.innerHTML = '&times;';
+    delSec.title = 'Delete section';
+    delSec.addEventListener('click', e => {
+      e.stopPropagation();
+      if (section.links.length > 0 && !confirm(`Delete section "${section.name}" and its ${section.links.length} link(s)?`)) return;
+      linksData.sections.splice(sIdx, 1);
+      saveLinks();
+      renderLinks();
+    });
+
+    heading.appendChild(arrow);
+    heading.appendChild(nameEl);
+    heading.appendChild(delSec);
+    heading.addEventListener('click', () => {
+      linkSectionCollapsed[section.name] = !linkSectionCollapsed[section.name];
+      renderLinks();
+    });
+
+    // Items container
+    const items = document.createElement('div');
+    items.className = 'link-section-items' + (linkSectionCollapsed[section.name] ? ' collapsed' : '');
+
+    section.links.forEach((lnk, lIdx) => {
+      const item = document.createElement('div');
+      item.className = 'link-item';
+      const a = document.createElement('a');
+      a.href = lnk.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = lnk.label;
+      a.title = lnk.url;
+      const del = document.createElement('button');
+      del.className = 'link-del';
+      del.innerHTML = '&times;';
+      del.title = 'Remove';
+      del.addEventListener('click', () => {
+        section.links.splice(lIdx, 1);
+        saveLinks();
+        renderLinks();
+      });
+      item.appendChild(a);
+      item.appendChild(del);
+      items.appendChild(item);
+    });
+
+    if (section.links.length === 0 && !linkSectionCollapsed[section.name]) {
+      const empty = document.createElement('div');
+      empty.className = 'panel-empty';
+      empty.style.cssText = 'padding:4px 0 6px;';
+      empty.textContent = 'No links yet.';
+      items.appendChild(empty);
+    }
+
+    group.appendChild(heading);
+    group.appendChild(items);
+    list.appendChild(group);
+  });
+}
+
+function addLink() {
+  let url = (document.getElementById('linkInput').value || '').trim();
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  const label = url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+  const selIdx = parseInt(document.getElementById('linkSectionSelect').value, 10);
+  if (isNaN(selIdx) || selIdx < 0 || selIdx >= linksData.sections.length) {
+    showToast('Select or create a section first.', 'error');
+    return;
+  }
+  linksData.sections[selIdx].links.push({ url, label });
+  saveLinks();
+  renderLinks();
+  document.getElementById('linkInput').value = '';
+}
+
+function addLinkSection() {
+  const input = document.getElementById('newSectionInput');
+  const name = (input.value || '').trim();
+  if (!name) return;
+  if (linksData.sections.find(s => s.name.toLowerCase() === name.toLowerCase())) {
+    showToast('Section already exists.', 'error');
+    return;
+  }
+  linksData.sections.push({ name, links: [] });
+  saveLinks();
+  renderLinks();
+  // Select the new section
+  document.getElementById('linkSectionSelect').value = linksData.sections.length - 1;
+  input.value = '';
+}
+
+// ─── Emails ──────────────────────────────────────────────────
+const LS_EMAILS = 'fo-emails';
+let savedEmails = [];
+
+function loadEmails() {
+  try { savedEmails = JSON.parse(localStorage.getItem(LS_EMAILS) || '[]'); } catch(e) { savedEmails = []; }
+  renderEmails();
+}
+
+function saveEmails() { localStorage.setItem(LS_EMAILS, JSON.stringify(savedEmails)); }
+
+function getDaysSince(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d)) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.floor((today - d) / 86400000);
+}
+
+function renderEmails() {
+  const list = document.getElementById('emailList');
+  list.innerHTML = '';
+  if (!savedEmails.length) {
+    const empty = document.createElement('div');
+    empty.className = 'panel-empty';
+    empty.textContent = 'No emails yet — click ＋ Add Email.';
+    list.appendChild(empty);
+    return;
+  }
+  const statusLabels = { pending: '⏳ Pending', actioned: '✅ Actioned', forinfo: 'ℹ️ For Info' };
+  const statusCycle  = { pending: 'actioned', actioned: 'forinfo', forinfo: 'pending' };
+  savedEmails.forEach((em, idx) => {
+    const days = getDaysSince(em.date);
+    const isOverdue = em.status === 'pending' && days !== null && days >= 3;
+    const card = document.createElement('div');
+    card.className = 'email-card' + (isOverdue ? ' overdue' : '');
+    const subj = document.createElement('div');
+    subj.className = 'email-subject';
+    subj.textContent = em.subject || '(no subject)';
+    const meta = document.createElement('div');
+    meta.className = 'email-meta';
+    const parts = [];
+    if (em.sender) parts.push('✉️ ' + em.sender);
+    if (em.date) {
+      const d = new Date(em.date + 'T00:00:00');
+      parts.push('📅 ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
+    }
+    meta.textContent = parts.join('  ·  ');
+    const badge = document.createElement('span');
+    badge.className = 'email-status ' + (em.status || 'pending');
+    badge.textContent = statusLabels[em.status || 'pending'];
+    badge.title = 'Click to cycle status';
+    badge.addEventListener('click', () => {
+      savedEmails[idx].status = statusCycle[savedEmails[idx].status || 'pending'];
+      saveEmails();
+      renderEmails();
+    });
+    card.appendChild(subj);
+    card.appendChild(meta);
+    card.appendChild(badge);
+    if (isOverdue) {
+      const ob = document.createElement('span');
+      ob.className = 'email-overdue-badge';
+      ob.textContent = '⚠️ Pending ' + days + ' day' + (days !== 1 ? 's' : '');
+      card.appendChild(ob);
+    }
+
+    // Action row: Preview + Delete
+    const actions = document.createElement('div');
+    actions.className = 'email-card-actions';
+
+    const previewBtn = document.createElement('button');
+    previewBtn.className = 'email-action-btn';
+    previewBtn.innerHTML = '👁 Preview';
+    previewBtn.title = 'Preview email';
+    previewBtn.addEventListener('click', () => openEmailPreview(em));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'email-action-btn del';
+    delBtn.innerHTML = '🗑 Delete';
+    delBtn.title = 'Delete email';
+    delBtn.addEventListener('click', () => {
+      if (confirm(`Delete "${em.subject || 'this email'}"?`)) deleteEmail(idx);
+    });
+
+    actions.appendChild(previewBtn);
+    actions.appendChild(delBtn);
+    card.appendChild(actions);
+    list.appendChild(card);
+  });
+}
+
+function openEmailModal(prefill = {}) {
+  document.getElementById('emailSubject').value = prefill.subject || '';
+  document.getElementById('emailSender').value  = prefill.sender  || '';
+  document.getElementById('emailDate').value    = prefill.date    || '';
+  document.getElementById('emailBody').value    = prefill.body    || '';
+  document.getElementById('emailNote').value    = prefill.note    || '';
+  document.getElementById('emailStatus').value  = prefill.status  || 'pending';
+  document.getElementById('emailModalBg').classList.add('open');
+  setTimeout(() => document.getElementById('emailSubject').focus(), 50);
+}
+
+function closeEmailModal() {
+  document.getElementById('emailModalBg').classList.remove('open');
+}
+
+function saveEmail() {
+  const subject = document.getElementById('emailSubject').value.trim();
+  if (!subject) { document.getElementById('emailSubject').focus(); return; }
+  savedEmails.push({
+    subject,
+    sender: document.getElementById('emailSender').value.trim(),
+    date:   document.getElementById('emailDate').value,
+    body:   document.getElementById('emailBody').value.trim(),
+    note:   document.getElementById('emailNote').value.trim(),
+    status: document.getElementById('emailStatus').value,
+  });
+  saveEmails();
+  closeEmailModal();
+  renderEmails();
+  showToast('Email saved', 'success');
+}
+
+function deleteEmail(idx) {
+  savedEmails.splice(idx, 1);
+  saveEmails();
+  renderEmails();
+}
+
+function openEmailPreview(em) {
+  document.getElementById('previewSubject').textContent = em.subject || '(no subject)';
+  const senderEl = document.getElementById('previewSender');
+  const dateEl   = document.getElementById('previewDate');
+  senderEl.textContent = em.sender ? '✉️ From: ' + em.sender : '';
+  senderEl.style.display = em.sender ? '' : 'none';
+  if (em.date) {
+    const d = new Date(em.date + 'T00:00:00');
+    dateEl.textContent = '📅 ' + d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    dateEl.style.display = '';
+  } else {
+    dateEl.style.display = 'none';
+  }
+  const bodyWrap = document.getElementById('previewBodyWrap');
+  const bodyEl   = document.getElementById('previewBody');
+  if (em.body) { bodyEl.textContent = em.body; bodyWrap.style.display = ''; }
+  else bodyWrap.style.display = 'none';
+
+  const noteWrap = document.getElementById('previewNoteWrap');
+  const noteEl   = document.getElementById('previewNote');
+  if (em.note) { noteEl.textContent = em.note; noteWrap.style.display = ''; }
+  else noteWrap.style.display = 'none';
+
+  const statusLabels = { pending: '⏳ Pending', actioned: '✅ Actioned', forinfo: 'ℹ️ For Info' };
+  const statusEl = document.getElementById('previewStatus');
+  statusEl.textContent = statusLabels[em.status || 'pending'];
+  statusEl.className = 'email-preview-status ' + (em.status || 'pending');
+
+  document.getElementById('emailPreviewBg').classList.add('open');
+}
+
+function closeEmailPreview() {
+  document.getElementById('emailPreviewBg').classList.remove('open');
+}
+
+// ─── Panel Toggle ────────────────────────────────────────────
+function setupPanelToggle(headerId, bodyId, toggleId) {
+  const header  = document.getElementById(headerId);
+  const body    = document.getElementById(bodyId);
+  const toggle  = document.getElementById(toggleId);
+  header.addEventListener('click', e => {
+    if (e.target.closest('button') && e.target.id !== toggleId) return;
+    const isHidden = body.classList.toggle('hidden');
+    toggle.classList.toggle('collapsed', isHidden);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
