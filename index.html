@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FileDrop</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23151F45'/><path d='M50 20 L50 68 M30 50 L50 72 L70 50' stroke='white' stroke-width='10' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
 
 <!-- Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1879,6 +1880,8 @@ body {
 
 <script>
 'use strict';
+// Capture clean source before any DOM mutation
+const _originalHtmlSource = document.documentElement.outerHTML;
 // ============================================================
 //  FILE ORGANIZER — Full Application Logic
 // ============================================================
@@ -3295,10 +3298,11 @@ async function saveHtml() {
     const backup = await buildBackupPayload();
     const jsonStr = JSON.stringify(backup);
 
-    // Strip any previously embedded seed block
     const seedStart = '<!--__FILEDROP_SEED_START__-->';
     const seedEnd   = '<!--__FILEDROP_SEED_END__-->';
-    let baseHtml = document.documentElement.outerHTML;
+    // Use the source captured at page load — not the live DOM
+    let baseHtml = _originalHtmlSource.replace(/^<!DOCTYPE[^>]*>\s*/i, '');
+    // Strip any previously embedded seed block
     const s = baseHtml.indexOf(seedStart);
     const e = baseHtml.indexOf(seedEnd);
     if (s !== -1 && e !== -1) baseHtml = baseHtml.slice(0, s) + baseHtml.slice(e + seedEnd.length);
@@ -3773,6 +3777,14 @@ async function init() {
 
     showProgress(100);
     console.log(`File Organizer ready. ${state.files.length} files, ${state.categories.length} categories loaded.`);
+
+    // Show mobile warning once ever
+    if (!localStorage.getItem('fo-mobile-warned')) {
+      localStorage.setItem('fo-mobile-warned', '1');
+      const bg = document.getElementById('mobileWarningBg');
+      document.getElementById('mobileWarningUrl').textContent = location.href;
+      bg.style.display = 'flex';
+    }
   } catch (err) {
     showProgress(100);
     showToast('Failed to initialize database: ' + err.message, 'error', 6000);
@@ -4123,5 +4135,22 @@ function setupPanelToggle(headerId, bodyId, toggleId) {
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
+
+<!-- Mobile Warning Modal -->
+<div id="mobileWarningBg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:36px 32px;max-width:420px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:'Inter',sans-serif;">
+    <div style="font-size:48px;margin-bottom:12px;">💻</div>
+    <h2 style="color:#151F45;font-size:20px;font-weight:700;margin-bottom:10px;">Desktop Only</h2>
+    <p style="color:#374151;font-size:14px;line-height:1.6;margin-bottom:20px;">
+      FileDrop is designed for laptop and desktop screens.<br>
+      If you're on mobile, copy the link below and open it on your laptop.
+    </p>
+    <div style="background:#F0F2F8;border-radius:8px;padding:10px 14px;margin-bottom:20px;display:flex;align-items:center;gap:8px;">
+      <span id="mobileWarningUrl" style="font-size:12px;color:#151F45;word-break:break-all;flex:1;text-align:left;"></span>
+      <button onclick="navigator.clipboard.writeText(location.href).then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='Copy',1500)})" style="background:#151F45;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">Copy</button>
+    </div>
+    <button onclick="document.getElementById('mobileWarningBg').style.display='none'" style="background:#151F45;color:#fff;border:none;border-radius:8px;padding:11px 32px;font-size:14px;font-weight:600;cursor:pointer;">Got it</button>
+  </div>
+</div>
 </body>
 </html>
